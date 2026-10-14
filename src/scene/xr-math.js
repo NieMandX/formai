@@ -45,12 +45,29 @@ function validFloorPoint(point, boxes, plinthPosition) {
   return true;
 }
 
-// Positive WebXR thumbstick Y means backward. No momentum after release.
-export function moveSmooth(rig, camera, axis, dt, models, plinth) {
+function analogAmount(axis, dt) {
   const deadzone = 0.18;
   if (!Number.isFinite(axis) || !Number.isFinite(dt) || Math.abs(axis) <= deadzone || dt <= 0)
-    return false;
-  const amount = (Math.min(1, Math.abs(axis)) - deadzone) / (1 - deadzone);
+    return 0;
+  return Math.sign(axis) * (Math.min(1, Math.abs(axis)) - deadzone) / (1 - deadzone);
+}
+
+export function turnSmooth(rig, camera, axis, dt) {
+  const amount = analogAmount(axis, dt);
+  if (!amount) return false;
+  const yaw = -amount * Math.PI / 2 * Math.min(dt, 0.05);
+  const pivot = camera.getWorldPosition(new T.Vector3());
+  // Turn around the user's tracked head, including physical room-scale movement.
+  rig.position.sub(pivot).applyAxisAngle(new T.Vector3(0, 1, 0), yaw).add(pivot);
+  rig.rotation.y += yaw;
+  rig.updateMatrixWorld(true);
+  return true;
+}
+
+// Positive WebXR thumbstick Y means backward. No momentum after release.
+export function moveSmooth(rig, camera, axis, dt, models, plinth) {
+  const amount = analogAmount(axis, dt);
+  if (!amount) return false;
   const direction = camera.getWorldDirection(new T.Vector3());
   direction.y = 0;
   if (direction.lengthSq() < 1e-6) {
@@ -61,7 +78,7 @@ export function moveSmooth(rig, camera, axis, dt, models, plinth) {
     direction.set(right.z, 0, -right.x);
   }
   if (direction.lengthSq() < 1e-6) return false;
-  const distance = -Math.sign(axis) * amount * 1.2 * Math.min(dt, 0.05);
+  const distance = -amount * 1.2 * Math.min(dt, 0.05);
   const steps = Math.max(1, Math.ceil(Math.abs(distance) / 0.025));
   const step = direction.normalize().multiplyScalar(distance / steps);
   // Use the tracked head, including physical walking, rather than the rig origin.

@@ -15,6 +15,7 @@ import {
   applyTwoHandTransform,
   validTeleport,
   moveSmooth,
+  turnSmooth,
   buttonEdge,
 } from "../src/scene/xr-math.js";
 const model = {
@@ -280,4 +281,31 @@ test("a delayed frame cannot produce a long locomotion jump", () => {
   const { rig, camera, plinth } = walkingScene();
   moveSmooth(rig, camera, -1, 5, [], plinth);
   assert.ok(Math.abs(rig.position.z - 3.54) < 1e-8);
+});
+test("turn speed follows analog deflection continuously and independently of frame rate", () => {
+  const turn = (fps, axis) => {
+    const { rig, camera } = walkingScene();
+    for (let i = 0; i < fps; i++) turnSmooth(rig, camera, axis, 1 / fps);
+    return rig.rotation.y;
+  };
+  assert.ok(Math.abs(turn(90, 1) + Math.PI / 2) < 1e-8);
+  assert.ok(Math.abs(turn(90, 0.59) + Math.PI / 4) < 1e-8);
+  assert.ok(Math.abs(turn(90, -1) - Math.PI / 2) < 1e-8);
+  assert.ok(Math.abs(turn(72, 1) - turn(120, 1)) < 1e-8);
+  assert.equal(turn(90, 0.18), 0);
+  assert.equal(turn(90, 0), 0);
+});
+test("turning keeps the physically offset head in place and stops immediately", () => {
+  const { rig, camera } = walkingScene();
+  camera.position.set(0.8, 1.65, -0.4);
+  rig.updateMatrixWorld(true);
+  const pivot = camera.getWorldPosition(new T.Vector3());
+  for (let i = 0; i < 90; i++) turnSmooth(rig, camera, 1, 1 / 90);
+  assert.ok(camera.getWorldPosition(new T.Vector3()).distanceTo(pivot) < 1e-8);
+  const stopped = rig.rotation.y;
+  for (const axis of [0, -0.1, NaN])
+    assert.equal(turnSmooth(rig, camera, axis, 1 / 90), false);
+  assert.equal(rig.rotation.y, stopped);
+  turnSmooth(rig, camera, 1, 5);
+  assert.ok(Math.abs(rig.rotation.y - stopped + Math.PI / 40) < 1e-8);
 });

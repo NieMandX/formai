@@ -118,7 +118,7 @@ test("paginated collection and clips retain access to all items", () => {
     format: "GLB",
   }));
   const ids = new Set();
-  for (let page = 0; page < 4; page++)
+  for (let page = 0; page < 6; page++)
     for (const c of buildMenuLayout({
       ...state,
       models,

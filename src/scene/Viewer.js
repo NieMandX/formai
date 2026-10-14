@@ -7,6 +7,7 @@ import { installXR } from "./xr";
 import { clampScale } from "../model-utils";
 import { refreshSkinnedBounds } from "./model-bounds.js";
 import { referenceById } from "../reference-catalog.js";
+import { restoreReferenceEyeTransparency } from "./reference-materials.js";
 
 export class Viewer {
   constructor(element, onChange) {
@@ -251,6 +252,7 @@ export class Viewer {
         o.material = Array.isArray(o.material) ? converted : converted[0];
       }
     });
+    restoreReferenceEyeTransparency(root);
     const model = {
       ...meta,
       slot,

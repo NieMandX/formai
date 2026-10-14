@@ -10,6 +10,7 @@ import {
   CircleHelp,
 } from "lucide-react";
 import { DEMOS } from "../scene/demos";
+import { REFERENCE_MODELS, referenceDetail } from "../reference-catalog.js";
 const marks = { knot: Layers3, architecture: Box, robot: PersonStanding };
 export function Library({
   models,
@@ -24,8 +25,9 @@ export function Library({
 }) {
   const input = useRef(),
     folder = useRef();
-  const ids = new Set(DEMOS.map((d) => d.id)),
+  const ids = new Set([...DEMOS, ...REFERENCE_MODELS].map((d) => d.id)),
     rows = [
+      ...REFERENCE_MODELS.map((model) => ({ ...model, reference: true, subtitle: referenceDetail(model) })),
       ...DEMOS,
       ...models
         .filter((m) => !ids.has(m.id))
@@ -84,7 +86,7 @@ export function Library({
       </div>
       <div className="model-list">
         {rows.map((row) => {
-          const Mark = marks[row.id] || Box,
+          const Mark = marks[row.id] || (row.reference ? PersonStanding : Box),
             loaded = models.some((m) => m.id === row.id);
           return (
             <div
@@ -124,10 +126,11 @@ export function Library({
       </div>
       <div className="local-note">
         <FolderOpen size={19} />
-        <span>Локальные файлы</span>
+        <span>Готовые референсы · 8K</span>
         <p>
-          Модели сохраняются в этом браузере. На другой шлем они автоматически
-          не переносятся.
+          Шесть поз доступны сразу на Quest 3. Выбранная поза загружается в
+          максимальном качестве и заменяет предыдущий встроенный референс.
+          Свои файлы сохраняются только в этом браузере.
         </p>
         <button onClick={onHelp}>
           <CircleHelp size={14} />

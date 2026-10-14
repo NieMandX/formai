@@ -1172,3 +1172,21 @@ fieldset {
   object-fit: cover;
   border-radius: 4px;
 }
+/* Also gives the desktop XR mirror the full canvas while an immersive session runs. */
+.app.is-immersive {
+  display: block;
+}
+.app.is-immersive > .header,
+.app.is-immersive > footer,
+.app.is-immersive .panel,
+.app.is-immersive .viewport > :not(.canvas-host) {
+  display: none;
+}
+.app.is-immersive .workspace {
+  display: block;
+  height: 100dvh;
+}
+.app.is-immersive .viewport {
+  height: 100dvh;
+  width: 100vw;
+}

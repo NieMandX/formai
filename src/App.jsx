@@ -54,9 +54,13 @@ export default function App() {
       v;
     try {
       v = new Viewer(canvas.current, (s) => {
-        if (alive) setSnapshot(s);
+        if (alive) {
+          setSnapshot(s);
+          if (s.settings) setSettings(s.settings);
+        }
       });
       viewer.current = v;
+      v.onDeleteRequest = remove;
       if (import.meta.env.DEV) window.__forma = v;
     } catch (error) {
       setFatal(
@@ -205,8 +209,10 @@ export default function App() {
     viewer.current?.remove(id);
     try {
       await deleteModel(id);
+      return true;
     } catch {
       notify("Модель убрана из комнаты, но не из хранилища браузера.", true);
+      return false;
     }
   }
   async function enterVR() {
@@ -222,7 +228,7 @@ export default function App() {
   }
   return (
     <div
-      className={`app mobile-${mobilePanel}`}
+      className={`app mobile-${mobilePanel} ${snapshot.immersive ? "is-immersive" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();
         if (!dialog) setDragging(true);

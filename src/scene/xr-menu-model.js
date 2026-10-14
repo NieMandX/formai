@@ -1,0 +1,378 @@
+// Pixel-space layout shared by the spatial renderer and interaction tests.
+export const MENU = {
+  width: 1440,
+  height: 1080,
+  worldWidth: 1.32,
+  distance: 1.35,
+};
+export const TABS = [
+  ["collection", "Коллекция", "box"],
+  ["object", "Объект", "sliders"],
+  ["animation", "Анимация", "play"],
+  ["scene", "Сцена", "sun"],
+];
+export const DEMOS = [
+  { id: "knot", name: "Узел", detail: "Форма и PBR-материал" },
+  { id: "architecture", name: "Архитектура", detail: "Свет и пространство" },
+  { id: "robot", name: "Робот", detail: "11 костей · 3 анимации" },
+];
+export const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+export function hitControl(controls, x, y) {
+  return (
+    controls.findLast(
+      (c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h,
+    ) || null
+  );
+}
+export function sliderValue(control, x) {
+  const t = clamp((x - control.x - 28) / (control.w - 56), 0, 1);
+  const value = control.min + t * (control.max - control.min);
+  return clamp(
+    control.step ? Math.round(value / control.step) * control.step : value,
+    control.min,
+    control.max,
+  );
+}
+export function buildMenuLayout(state) {
+  const controls = [],
+    labels = [];
+  const button = (id, text, x, y, w, h, extra = {}) =>
+    controls.push({ id, text, x, y, w, h, type: "button", ...extra });
+  const label = (text, x, y, size = 28, extra = {}) =>
+    labels.push({ text, x, y, size, ...extra });
+  const slider = (id, text, value, min, max, x, y, w, format, step) =>
+    controls.push({
+      id,
+      text,
+      value,
+      min,
+      max,
+      x,
+      y,
+      w,
+      h: 100,
+      type: "slider",
+      format,
+      step,
+      disabled: !state.model && id !== "exposure",
+    });
+  const model = state.model,
+    settings = state.settings;
+  label("FORMAI", 38, 72, 40, { weight: 700, sidebar: true });
+  label("СТУДИЯ В VR", 40, 116, 20, { sidebar: true, muted: true });
+  TABS.forEach(([id, text, icon], i) =>
+    button("tab:" + id, text, 24, 178 + i * 126, 236, 102, {
+      icon,
+      sidebar: true,
+      active: state.tab === id,
+    }),
+  );
+  button("tab:help", "Управление", 24, 810, 236, 94, {
+    icon: "help",
+    sidebar: true,
+    active: state.tab === "help",
+  });
+  button("exit", "Выйти из VR", 24, 936, 236, 94, {
+    icon: "exit",
+    sidebar: true,
+  });
+  button("recenter", "Передо мной", 1114, 34, 110, 88, {
+    icon: "focus",
+    iconOnly: true,
+  });
+  button("close", "Закрыть меню", 1250, 34, 110, 88, {
+    icon: "close",
+    iconOnly: true,
+  });
+  const title = TABS.find((t) => t[0] === state.tab)?.[1] || "Управление";
+  label(title, 316, 82, 42, { weight: 650 });
+  label(
+    state.tab === "collection"
+      ? `${state.models.length} из 12 моделей в комнате`
+      : state.tab === "object" && model
+        ? `${model.name} · ${(model.triangles || 0).toLocaleString("ru-RU")} треугольников`
+        : model?.name || "Выберите модель в коллекции",
+    318,
+    132,
+    25,
+    { muted: true, maxWidth: 750 },
+  );
+  label("X / A — меню     Y / B — вернуть меню", 318, 1032, 23, {
+    muted: true,
+  });
+  label(
+    state.notice || "Курок — выбрать · Боковая кнопка — захват",
+    318,
+    982,
+    24,
+    { muted: !state.notice, maxWidth: 1040 },
+  );
+  if (state.confirm) {
+    label(
+      state.confirm.type === "delete"
+        ? "Убрать модель?"
+        : "Завершить VR-сеанс?",
+      330,
+      320,
+      40,
+      { weight: 650 },
+    );
+    label(
+      state.confirm.type === "delete"
+        ? state.confirm.name
+        : "Вы вернётесь к веб-версии студии.",
+      330,
+      390,
+      29,
+      { maxWidth: 980 },
+    );
+    label(
+      state.confirm.type === "delete"
+        ? "Локальная сохранённая копия тоже будет удалена."
+        : "Модели останутся в текущей комнате.",
+      330,
+      460,
+      25,
+      { muted: true, maxWidth: 990 },
+    );
+    button("cancel", "Отмена", 330, 570, 470, 110);
+    button(
+      "confirm",
+      state.confirm.type === "delete" ? "Убрать модель" : "Выйти из VR",
+      826,
+      570,
+      520,
+      110,
+      { danger: state.confirm.type === "delete", primary: true },
+    );
+    return {
+      controls: controls.filter((c) => c.id === "cancel" || c.id === "confirm"),
+      labels,
+    };
+  }
+  if (state.tab === "collection") {
+    const entries = [
+      ...state.models,
+      ...DEMOS.filter((d) => !state.models.some((m) => m.id === d.id)).map(
+        (d) => ({ ...d, demo: true }),
+      ),
+    ];
+    const pages = Math.max(1, Math.ceil(entries.length / 4)),
+      page = clamp(state.page, 0, pages - 1);
+    entries.slice(page * 4, page * 4 + 4).forEach((entry, i) => {
+      button("model:" + entry.id, entry.name, 316, 204 + i * 142, 1044, 118, {
+        modelId: entry.id,
+        active: model?.id === entry.id,
+        icon: "box",
+        thumb: entry.id,
+        subtitle: entry.demo
+          ? "Добавить пример · " + entry.detail
+          : `${entry.format} · ${entry.animations || 0} анимаций${model?.id === entry.id ? " · выбрана" : ""}`,
+        disabled: state.busy,
+      });
+    });
+    button("page:prev", "Назад", 316, 808, 242, 96, {
+      disabled: page === 0 || state.busy,
+      icon: "left",
+    });
+    label(`${page + 1} / ${pages}`, 608, 868, 30, { muted: true });
+    button("page:next", "Далее", 744, 808, 242, 96, {
+      disabled: page === pages - 1 || state.busy,
+      icon: "right",
+    });
+    button("tab:object", "Свойства", 1012, 808, 348, 96, {
+      disabled: !model,
+      primary: true,
+    });
+  } else if (state.tab === "object") {
+    slider(
+      "scale",
+      "Масштаб",
+      Math.log(model?.scale || 1),
+      Math.log(0.05),
+      Math.log(10),
+      316,
+      204,
+      1044,
+      `${Math.round((model?.scale || 1) * 100)}%`,
+    );
+    slider(
+      "rotation",
+      "Вращение Y",
+      model?.rotation || 0,
+      -180,
+      180,
+      316,
+      334,
+      1044,
+      `${Math.round(model?.rotation || 0)}°`,
+      1,
+    );
+    label("ПОЛОЖЕНИЕ · МЕТРЫ", 316, 500, 23, { muted: true });
+    ["x", "y", "z"].forEach((axis, i) => {
+      const x = 316 + i * 356;
+      label(axis.toUpperCase(), x + 12, 548, 27, { weight: 650 });
+      label((model?.position[i] || 0).toFixed(2), x + 292, 548, 27, {
+        align: "right",
+      });
+      button("position:" + axis + ":-1", "−", x, 574, 142, 90, {
+        disabled: !model,
+        icon: "minus",
+        iconOnly: true,
+      });
+      button("position:" + axis + ":1", "+", x + 164, 574, 142, 90, {
+        disabled: !model,
+        icon: "plus",
+        iconOnly: true,
+      });
+    });
+    label("Шаг 10 см · Захват двумя руками — свободный масштаб", 316, 720, 24, {
+      muted: true,
+    });
+    button("reset", "На пьедестал", 316, 764, 496, 96, {
+      disabled: !model,
+      icon: "reset",
+    });
+    button("inspect", "Подойти к модели", 840, 764, 520, 96, {
+      disabled: !model,
+      icon: "focus",
+    });
+    button("delete", "Убрать из комнаты", 316, 882, 1044, 76, {
+      disabled: !model,
+      danger: true,
+      icon: "trash",
+    });
+  } else if (state.tab === "animation") {
+    const clips = model?.clips || [];
+    if (!clips.length) {
+      label("В этой модели нет анимации", 340, 340, 38, { weight: 650 });
+      label("Выберите персонажа с встроенными клипами", 340, 406, 28, {
+        muted: true,
+      });
+      label("или откройте демонстрационного робота.", 340, 452, 28, {
+        muted: true,
+      });
+      button("model:robot", "Открыть робота", 340, 542, 988, 112, {
+        primary: true,
+        icon: "play",
+        disabled: state.busy,
+      });
+    } else {
+      label(`${model.bones} костей · ${clips.length} клипов`, 316, 202, 24, {
+        muted: true,
+      });
+      const pages = Math.ceil(clips.length / 3),
+        page = clamp(state.clipPage, 0, pages - 1);
+      clips
+        .slice(page * 3, page * 3 + 3)
+        .forEach((clip, i) =>
+          button(
+            "clip:" + (page * 3 + i),
+            clip.name,
+            316,
+            236 + i * 112,
+            1044,
+            94,
+            {
+              active: model.clip === page * 3 + i,
+              icon: "play",
+              subtitle: formatTime(clip.duration),
+            },
+          ),
+        );
+      button("clips:prev", "Назад", 316, 580, 230, 84, {
+        disabled: page === 0,
+        icon: "left",
+      });
+      label(`${page + 1} / ${pages}`, 610, 634, 28, { muted: true });
+      button("clips:next", "Далее", 740, 580, 230, 84, {
+        disabled: page === pages - 1,
+        icon: "right",
+      });
+      button("playing", model.playing ? "Пауза" : "Играть", 996, 580, 364, 84, {
+        primary: true,
+        icon: model.playing ? "pause" : "play",
+      });
+      slider(
+        "time",
+        "Позиция клипа",
+        model.time || 0,
+        0,
+        Math.max(0.001, clips[model.clip]?.duration || 0),
+        316,
+        684,
+        1044,
+        formatTime(model.time || 0),
+      );
+      slider(
+        "speed",
+        "Скорость",
+        model.speed,
+        0.25,
+        2,
+        316,
+        814,
+        1044,
+        `${model.speed.toFixed(2).replace(/0$/, "")}×`,
+        0.25,
+      );
+    }
+  } else if (state.tab === "scene") {
+    label("ОСВЕЩЕНИЕ PBR", 316, 206, 23, { muted: true });
+    button("lighting:gallery", "Тёплая галерея", 316, 244, 504, 104, {
+      active: settings.lighting === "gallery",
+      icon: "sun",
+    });
+    button("lighting:neutral", "Нейтральная", 846, 244, 514, 104, {
+      active: settings.lighting === "neutral",
+      icon: "sun",
+    });
+    slider(
+      "exposure",
+      "Экспозиция",
+      settings.exposure,
+      0.4,
+      1.8,
+      316,
+      392,
+      1044,
+      settings.exposure.toFixed(1),
+      0.05,
+    );
+    button("grid", "Сетка пола", 316, 542, 1044, 104, {
+      toggle: true,
+      value: settings.grid,
+    });
+    button("autoRotate", "Автовращение модели", 316, 670, 1044, 104, {
+      toggle: true,
+      value: settings.autoRotate,
+      disabled: !model,
+    });
+    button("home", "Вернуться к входу", 316, 810, 1044, 104, { icon: "reset" });
+  } else {
+    [
+      ["Курок", "Выбрать объект или нажать кнопку меню"],
+      ["Боковая кнопка", "Захватить модель и перемещать рукой"],
+      ["Два захвата", "Развести руки — масштаб; повернуть — вращение"],
+      ["Левый стик вперёд", "Выбрать место на полу; отпустить — телепорт"],
+      ["Правый стик", "Повернуться влево или вправо на 30°"],
+      ["X / A · Y / B", "Открыть / закрыть · вернуть меню перед собой"],
+    ].forEach(([heading, body], i) => {
+      label(heading, 316, 224 + i * 116, 29, { weight: 650 });
+      label(body, 316, 266 + i * 116, 25, { muted: true, maxWidth: 1044 });
+    });
+    label("Файлы добавляются в веб-версии до входа в VR.", 316, 940, 25, {
+      muted: true,
+    });
+  }
+  if (state.busy)
+    controls.forEach((c) => {
+      if (!c.id.startsWith("tab:") && c.id !== "close" && c.id !== "recenter")
+        c.disabled = true;
+    });
+  return { controls, labels };
+}
+export function formatTime(seconds) {
+  const n = Math.max(0, Math.floor(seconds || 0));
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
+}

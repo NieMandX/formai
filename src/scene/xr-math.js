@@ -21,13 +21,19 @@ export function applyTwoHandTransform(object, gesture, a, b) {
   return true;
 }
 export function validTeleport(point, models, plinth) {
+  return validFloorPoint(
+    point,
+    [...models].map((model) => new T.Box3().setFromObject(model.wrapper)),
+    plinth.position,
+  );
+}
+function validFloorPoint(point, boxes, plinthPosition) {
   if (Math.abs(point.x) > 3.7 || point.z < -3.7 || point.z > 5.3) return false;
   if (
-    Math.hypot(point.x - plinth.position.x, point.z - plinth.position.z) < 1.65
+    Math.hypot(point.x - plinthPosition.x, point.z - plinthPosition.z) < 1.65
   )
     return false;
-  for (const model of models) {
-    const box = new T.Box3().setFromObject(model.wrapper);
+  for (const box of boxes) {
     if (
       point.x > box.min.x - 0.25 &&
       point.x < box.max.x + 0.25 &&
@@ -37,6 +43,39 @@ export function validTeleport(point, models, plinth) {
       return false;
   }
   return true;
+}
+
+// Positive WebXR thumbstick Y means backward. No momentum after release.
+export function moveSmooth(rig, camera, axis, dt, models, plinth) {
+  const deadzone = 0.18;
+  if (!Number.isFinite(axis) || !Number.isFinite(dt) || Math.abs(axis) <= deadzone || dt <= 0)
+    return false;
+  const amount = (Math.min(1, Math.abs(axis)) - deadzone) / (1 - deadzone);
+  const direction = camera.getWorldDirection(new T.Vector3());
+  direction.y = 0;
+  if (direction.lengthSq() < 1e-6) {
+    // Preserve a horizontal heading even when looking straight up or down.
+    const right = new T.Vector3(1, 0, 0).applyQuaternion(
+      camera.getWorldQuaternion(new T.Quaternion()),
+    );
+    direction.set(right.z, 0, -right.x);
+  }
+  if (direction.lengthSq() < 1e-6) return false;
+  const distance = -Math.sign(axis) * amount * 1.2 * Math.min(dt, 0.05);
+  const steps = Math.max(1, Math.ceil(Math.abs(distance) / 0.025));
+  const step = direction.normalize().multiplyScalar(distance / steps);
+  // Use the tracked head, including physical walking, rather than the rig origin.
+  const start = camera.getWorldPosition(new T.Vector3());
+  const point = start.clone(), candidate = start.clone();
+  const boxes = [...models].map((model) => new T.Box3().setFromObject(model.wrapper));
+  for (let i = 0; i < steps; i++) {
+    candidate.copy(point).add(step);
+    if (!validFloorPoint(candidate, boxes, plinth.position)) break;
+    point.copy(candidate);
+  }
+  rig.position.x += point.x - start.x;
+  rig.position.z += point.z - start.z;
+  return point.distanceToSquared(start) > 0;
 }
 export function buttonEdge(previous, current) {
   return current && !previous;

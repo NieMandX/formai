@@ -89,7 +89,7 @@ export function buildMenuLayout(state) {
   label(title, 316, 82, 42, { weight: 650 });
   label(
     state.tab === "collection"
-      ? `${state.models.length} из 12 моделей в комнате`
+      ? `${REFERENCE_MODELS.length} поз · ${state.models.length} из 12 моделей в комнате`
       : state.tab === "object" && model
         ? `${model.name} · ${(model.triangles || 0).toLocaleString("ru-RU")} треугольников`
         : model?.name || "Выберите модель в коллекции",
@@ -178,11 +178,13 @@ export function buildMenuLayout(state) {
       });
     });
     button("page:prev", "Назад", 316, 808, 242, 96, {
+      targetPage: Math.max(0, page - 1),
       disabled: page === 0 || state.busy,
       icon: "left",
     });
     label(`${page + 1} / ${pages}`, 608, 868, 30, { muted: true });
     button("page:next", "Далее", 744, 808, 242, 96, {
+      targetPage: Math.min(pages - 1, page + 1),
       disabled: page === pages - 1 || state.busy,
       icon: "right",
     });
@@ -361,7 +363,7 @@ export function buildMenuLayout(state) {
       ["Боковая кнопка", "Захватить модель и перемещать рукой"],
       ["Два захвата", "Развести руки — масштаб; повернуть — вращение"],
       ["Левый стик вперёд", "Выбрать место на полу; отпустить — телепорт"],
-      ["Правый стик", "Повернуться влево или вправо на 30°"],
+      ["Правый стик", "Вперёд/назад — идти; влево/вправо — поворот 30°"],
       ["X / A · Y / B", "Открыть / закрыть · вернуть меню перед собой"],
     ].forEach(([heading, body], i) => {
       label(heading, 316, 224 + i * 116, 29, { weight: 650 });

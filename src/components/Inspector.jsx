@@ -14,12 +14,8 @@ export function Toggle({ label, checked, onChange }) {
 }
 export function Inspector({ model, viewer, settings, setSettings }) {
   const update = (key, value) => {
-    setSettings((s) => ({ ...s, [key]: value }));
-    if (!viewer) return;
-    if (key === "grid") viewer.gallery.grid.visible = value;
-    if (key === "autoRotate") viewer.autoRotate = value;
-    if (key === "exposure") viewer.renderer.toneMappingExposure = value;
-    if (key === "lighting") viewer.gallery.setLighting(value);
+    if (viewer) viewer.setSceneSetting(key, value);
+    else setSettings((s) => ({ ...s, [key]: value }));
   };
   return (
     <aside className="inspector panel" aria-label="Свойства модели">

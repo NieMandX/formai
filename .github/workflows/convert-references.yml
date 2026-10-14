@@ -1,0 +1,82 @@
+name: Encode full reference collection
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: encode-references-v2
+  cancel-in-progress: false
+env:
+  SOURCE_RELEASE: reference-sources-v2
+  OUTPUT_RELEASE: reference-models-uastc-v2
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        run: echo "value=$(jq -c '{include:.models}' scripts/reference-sources.json)" >> "$GITHUB_OUTPUT"
+      - name: Prepare output release
+        run: |
+          if ! gh release view "$OUTPUT_RELEASE" >/dev/null 2>&1; then
+            gh release create "$OUTPUT_RELEASE" --draft --title 'FORMAI — 43 full-quality KTX2 references' --notes 'Original LOD0 geometry. Source-resolution 4K/8K color textures encoded with KTX-Software 4.4.2, UASTC quality 4, Zstd 18, no RDO, full mipmaps. Geometry bytes and SHA-256 verified during conversion.'
+          fi
+  encode:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install Pillow==11.3.0
+      - name: Download verified KTX tools
+        run: |
+          curl --fail --location --retry 3 https://github.com/KhronosGroup/KTX-Software/releases/download/v4.4.2/KTX-Software-4.4.2-Linux-x86_64.tar.bz2 -o "$RUNNER_TEMP/ktx.tar.bz2"
+          echo "a8781bad05f9624edbf910b7f258cd0a4ba7d3e63b49ecc0a0ab440bf6a0a245  $RUNNER_TEMP/ktx.tar.bz2" | sha256sum --check
+          mkdir "$RUNNER_TEMP/ktx"
+          tar -xjf "$RUNNER_TEMP/ktx.tar.bz2" -C "$RUNNER_TEMP/ktx"
+          echo "KTX_BIN=$(find "$RUNNER_TEMP/ktx" -type f -path '*/bin/ktx' -print -quit)" >> "$GITHUB_ENV"
+      - name: Download and verify original GLB
+        env:
+          MODEL_FILE: ${{ matrix.file }}
+          MODEL_SHA: ${{ matrix.sha256 }}
+        run: |
+          mkdir source output
+          gh release download "$SOURCE_RELEASE" --pattern "$MODEL_FILE" --dir source
+          echo "$MODEL_SHA  source/$MODEL_FILE" | sha256sum --check
+      - name: Encode and validate without changing geometry
+        env:
+          MODEL_FILE: ${{ matrix.file }}
+        run: python scripts/convert-references.py --ktx "$KTX_BIN" --cache "$RUNNER_TEMP/texture-cache" --output output "source/$MODEL_FILE"
+      - name: Upload verified model and conversion report
+        run: gh release upload "$OUTPUT_RELEASE" output/*.glb output/*.json --clobber
+  publish:
+    needs: encode
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify complete collection
+        run: |
+          gh release download "$OUTPUT_RELEASE" --pattern '*.json' --dir reports
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          sources = json.loads(Path('scripts/reference-sources.json').read_text())['models']
+          records = [json.loads((Path('reports') / (Path(m['file']).stem + '-uastc.json')).read_text()) for m in sources]
+          assert len(records) == 43
+          assert all(r['textureSize'] in (4096, 8192) and r['bytes'] < 100 * 1024**2 for r in records)
+          Path('catalog.json').write_text(json.dumps(records, indent=2))
+          print('Verified', len(records), 'models;', sum(r['bytes'] for r in records), 'bytes')
+          PY
+          gh release upload "$OUTPUT_RELEASE" catalog.json --clobber
+          gh release edit "$OUTPUT_RELEASE" --draft=false --latest=false

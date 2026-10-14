@@ -14,6 +14,7 @@ import {
 import {
   applyTwoHandTransform,
   validTeleport,
+  moveSmooth,
   buttonEdge,
 } from "../src/scene/xr-math.js";
 const model = {
@@ -213,4 +214,70 @@ test("held menu buttons produce only one opening edge", () => {
   assert.equal(buttonEdge(false, true), true);
   assert.equal(buttonEdge(true, true), false);
   assert.equal(buttonEdge(true, false), false);
+});
+
+function walkingScene() {
+  const rig = new T.Group(), camera = new T.PerspectiveCamera();
+  rig.position.set(-2.5, 0, 3.6);
+  camera.position.set(0, 1.65, 0);
+  rig.add(camera);
+  rig.updateMatrixWorld(true);
+  return { rig, camera, plinth: new T.Object3D() };
+}
+test("smooth locomotion is analog, frame-rate independent and stops on stick release", () => {
+  const walk = (fps, axis) => {
+    const { rig, camera, plinth } = walkingScene();
+    for (let i = 0; i < fps; i++) {
+      moveSmooth(rig, camera, axis, 1 / fps, [], plinth);
+      rig.updateMatrixWorld(true);
+    }
+    return rig.position.z;
+  };
+  assert.ok(Math.abs(walk(72, -1) - 2.4) < 1e-8);
+  assert.ok(Math.abs(walk(120, -1) - walk(72, -1)) < 1e-8);
+  assert.ok(Math.abs(walk(90, 1) - 4.8) < 1e-8);
+  assert.ok(Math.abs(walk(90, -0.59) - 3) < 1e-8);
+  const { rig, camera, plinth } = walkingScene();
+  moveSmooth(rig, camera, -1, 1 / 90, [], plinth);
+  rig.updateMatrixWorld(true);
+  const stopped = rig.position.clone();
+  for (const axis of [0, 0.1, -0.18, NaN])
+    assert.equal(moveSmooth(rig, camera, axis, 1 / 90, [], plinth), false);
+  assert.deepEqual(rig.position, stopped);
+});
+test("walking follows head yaw without changing height, including a vertical gaze", () => {
+  for (const pitch of [0, Math.PI / 3, Math.PI / 2, -Math.PI / 2]) {
+    const { rig, camera, plinth } = walkingScene();
+    camera.rotation.set(pitch, -Math.PI / 2, 0, "YXZ");
+    rig.updateMatrixWorld(true);
+    moveSmooth(rig, camera, -1, 0.05, [], plinth);
+    assert.ok(Math.abs(rig.position.x + 2.44) < 1e-8);
+    assert.ok(Math.abs(rig.position.z - 3.6) < 1e-8);
+    assert.equal(rig.position.y, 0);
+    assert.equal(camera.position.y, 1.65);
+  }
+});
+test("walking respects the tracked head, walls, pedestal and model bounds", () => {
+  const { rig, camera, plinth } = walkingScene();
+  rig.position.set(0, 0, 3.6);
+  camera.position.z = 1.69; // Physical movement has already put the head near the wall.
+  rig.updateMatrixWorld(true);
+  assert.equal(moveSmooth(rig, camera, 1, 0.05, [], plinth), false);
+  camera.position.z = 0;
+  rig.position.z = 1.66;
+  rig.updateMatrixWorld(true);
+  assert.equal(moveSmooth(rig, camera, -1, 0.05, [], plinth), false);
+  const mesh = new T.Mesh(new T.BoxGeometry(1, 2, 1));
+  mesh.position.set(-2.5, 1, 0);
+  mesh.updateMatrixWorld(true);
+  rig.position.set(-2.5, 0, 0.76);
+  rig.updateMatrixWorld(true);
+  assert.equal(moveSmooth(rig, camera, -1, 0.05, [{ wrapper: mesh }].values(), plinth), false);
+  // Backing away from an obstacle remains possible.
+  assert.equal(moveSmooth(rig, camera, 1, 0.05, [{ wrapper: mesh }].values(), plinth), true);
+});
+test("a delayed frame cannot produce a long locomotion jump", () => {
+  const { rig, camera, plinth } = walkingScene();
+  moveSmooth(rig, camera, -1, 5, [], plinth);
+  assert.ok(Math.abs(rig.position.z - 3.54) < 1e-8);
 });

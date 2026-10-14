@@ -6,7 +6,7 @@ import { disposeObject, loadModel } from "./loaders";
 import { installXR } from "./xr";
 import { clampScale } from "../model-utils";
 import { refreshSkinnedBounds } from "./model-bounds.js";
-import { referenceById } from "../reference-catalog.js";
+import { referenceById, referencePath } from "../reference-catalog.js";
 import { restoreReferenceEyeTransparency } from "./reference-materials.js";
 
 export class Viewer {
@@ -292,7 +292,7 @@ export class Viewer {
       let result;
       try {
         result = await loadModel({
-          url: new URL(import.meta.env.BASE_URL + "models/references/" + reference.file, location.href).href,
+          url: new URL(referencePath(reference, import.meta.env.BASE_URL, import.meta.env.DEV), location.href).href,
           expectedBytes: reference.bytes,
           signal: this.catalogAbort.signal,
           onProgress: (fraction) => {
@@ -309,7 +309,7 @@ export class Viewer {
           disposeObject(result.root);
           return;
         }
-        // Release the previous 8K textures before the next GPU upload.
+        // Release the previous reference textures before the next GPU upload.
         // Keep it visible until the download and parsing have succeeded.
         for (const model of previous) this.remove(model.id);
         this.remove("knot");

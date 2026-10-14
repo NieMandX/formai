@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { extension, normalizedPath, validateModelURL } from "../model-utils";
+import { extension, normalizedPath, validateModelURL } from "../model-utils.js";
 import { downloadModel } from "./download.js";
+import { hydrateSourceMaterials } from "./source-materials.js";
 
 export function disposeObject(root) {
   const textures = new Set(),
@@ -44,6 +45,7 @@ async function parser(ext, data, path, manager, renderer, cleanups) {
       .setWorkerLimit(2);
     const ktx = new KTX2Loader()
       .setTranscoderPath(`${import.meta.env.BASE_URL}decoders/basis/`)
+      .setWorkerLimit(2)
       .detectSupport(renderer);
     cleanups.push(
       () => draco.dispose(),
@@ -54,6 +56,7 @@ async function parser(ext, data, path, manager, renderer, cleanups) {
       .setKTX2Loader(ktx)
       .setMeshoptDecoder(MeshoptDecoder)
       .parseAsync(data, path);
+    await hydrateSourceMaterials(result);
     return { root: result.scene, clips: result.animations };
   }
   if (ext === "fbx") {

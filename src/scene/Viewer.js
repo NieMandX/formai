@@ -14,6 +14,12 @@ export class Viewer {
     this.selected = null;
     this.disposed = false;
     this.autoRotate = false;
+    this.settings = {
+      grid: true,
+      autoRotate: false,
+      lighting: "gallery",
+      exposure: 1,
+    };
     this.nextSlot = 0;
     this.scene = new T.Scene();
     this.camera = new T.PerspectiveCamera(45, 1, 0.05, 100);
@@ -101,7 +107,7 @@ export class Viewer {
       for (const m of this.models.values()) {
         if (m.playing) m.mixer?.update(dt * m.speed);
       }
-      if (this.autoRotate && this.selected && !this.renderer.xr.isPresenting)
+      if (this.autoRotate && this.selected && !this.xr.isManipulating())
         this.selected.wrapper.rotation.y += dt * 0.25;
       this.xr.update(dt);
       if (!this.renderer.xr.isPresenting) this.orbit.update();
@@ -329,6 +335,22 @@ export class Viewer {
       this.emit();
     }
   }
+  seek(seconds) {
+    const m = this.selected;
+    if (!m?.action) return;
+    m.action.time = T.MathUtils.clamp(seconds, 0, m.clips[m.clip].duration);
+    m.mixer.update(0);
+    this.emit();
+  }
+  setSceneSetting(key, value) {
+    if (!(key in this.settings)) return;
+    this.settings = { ...this.settings, [key]: value };
+    if (key === "grid") this.gallery.grid.visible = value;
+    if (key === "autoRotate") this.autoRotate = value;
+    if (key === "exposure") this.renderer.toneMappingExposure = value;
+    if (key === "lighting") this.gallery.setLighting(value);
+    this.emit();
+  }
   setClip(index) {
     const m = this.selected;
     if (!m?.clips[index]) return;
@@ -400,6 +422,7 @@ export class Viewer {
   emit() {
     const m = this.selected;
     this.onChange({
+      settings: this.settings,
       thumbnails: this.thumbnails,
       models: [...this.models.values()].map(
         ({ id, name, format, clips, triangles, bones }) => ({
@@ -439,6 +462,7 @@ export class Viewer {
     this.renderer.setAnimationLoop(null);
     this.observer.disconnect();
     this.orbit.dispose();
+    this.xr.dispose();
     this.renderer.domElement.removeEventListener(
       "pointerdown",
       this.pointerDown,

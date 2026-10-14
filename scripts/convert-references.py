@@ -8,6 +8,7 @@ import fcntl
 import hashlib
 import io
 import json
+import os
 import struct
 import subprocess
 import time
@@ -58,7 +59,7 @@ def convert(path, output, cache, ktx):
                            "--assign-tf", "srgb", "--assign-primaries", "bt709",
                            "--assign-texcoord-origin", "top-left", "--generate-mipmap",
                            "--encode", "uastc", "--uastc-quality", "4",
-                           "--zstd", "18", "--threads", "6", "--compare-psnr",
+                           "--zstd", "18", "--threads", str(os.cpu_count() or 1), "--compare-psnr",
                            str(png), str(temporary)]
                 print(f"Encoding {path.name}: {width}x{height}, UASTC quality 4, no RDO", flush=True)
                 started = time.monotonic()

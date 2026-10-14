@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as T from "three";
+import { makeRobot } from "../src/scene/demos.js";
+import { refreshSkinnedBounds } from "../src/scene/model-bounds.js";
 import {
   MENU,
   buildMenuLayout,
@@ -35,6 +37,23 @@ const state = {
   page: 0,
   clipPage: 0,
 };
+test("skinned selection and ray bounds follow a relocated normalized skeleton", () => {
+  const { root } = makeRobot();
+  root.updateMatrixWorld(true);
+  const wrapper = new T.Group();
+  wrapper.add(root);
+  wrapper.position.set(-2, 0.02, 0);
+  wrapper.scale.setScalar(0.9);
+  // Reproduce a bounds walk before the sibling skeleton's new world pose.
+  new T.Box3().setFromObject(wrapper);
+  refreshSkinnedBounds(wrapper);
+  const cached = new T.Box3().setFromObject(wrapper);
+  const precise = new T.Box3().setFromObject(wrapper, true);
+  assert.ok(cached.min.distanceTo(precise.min) < 1e-6);
+  assert.ok(cached.max.distanceTo(precise.max) < 1e-6);
+  const ray = new T.Raycaster(new T.Vector3(-2, 1.2, 3), new T.Vector3(0, 0, -1));
+  assert.ok(ray.intersectObject(wrapper, true).length > 0);
+});
 test("spatial hit targets fit their panel, stay large and never overlap", () => {
   for (const tab of ["collection", "object", "animation", "scene", "help"]) {
     const { controls } = buildMenuLayout({ ...state, tab });

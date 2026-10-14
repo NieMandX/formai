@@ -89,7 +89,7 @@ export function buildMenuLayout(state) {
   label(title, 316, 82, 42, { weight: 650 });
   label(
     state.tab === "collection"
-      ? `${state.models.length} из 12 моделей в комнате`
+      ? `${REFERENCE_MODELS.length} поз · ${state.models.length} из 12 моделей в комнате`
       : state.tab === "object" && model
         ? `${model.name} · ${(model.triangles || 0).toLocaleString("ru-RU")} треугольников`
         : model?.name || "Выберите модель в коллекции",
@@ -178,11 +178,13 @@ export function buildMenuLayout(state) {
       });
     });
     button("page:prev", "Назад", 316, 808, 242, 96, {
+      targetPage: Math.max(0, page - 1),
       disabled: page === 0 || state.busy,
       icon: "left",
     });
     label(`${page + 1} / ${pages}`, 608, 868, 30, { muted: true });
     button("page:next", "Далее", 744, 808, 242, 96, {
+      targetPage: Math.min(pages - 1, page + 1),
       disabled: page === pages - 1 || state.busy,
       icon: "right",
     });

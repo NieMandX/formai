@@ -283,8 +283,10 @@ export class SpatialMenu {
       } finally {
         this.busy = false;
       }
-    } else if (id === "page:prev") this.page = Math.max(0, this.page - 1);
-    else if (id === "page:next") this.page++;
+    } else if (id === "page:prev" || id === "page:next") {
+      const control = this.layout.controls.find((c) => c.id === id);
+      if (control && !control.disabled) this.page = control.targetPage;
+    }
     else if (id === "clips:prev")
       this.clipPage = Math.max(0, this.clipPage - 1);
     else if (id === "clips:next") this.clipPage++;

@@ -1,0 +1,176 @@
+{
+  "models": [
+    {
+      "file": "ariel-pose-42.glb",
+      "sha256": "3b8f900e7178b5effbb1082da1bad0ec863f37d13d1732d3ffdb147b66623846"
+    },
+    {
+      "file": "ariel-pose-44.glb",
+      "sha256": "2901b68e25854fb1a0279f03157592f3e972d2ac01e39a02a78f246a878d04b0"
+    },
+    {
+      "file": "ariel-pose-45.glb",
+      "sha256": "44ee0032a23bdea715a5a44600cbbf9bc4d5f17e38af827f3a61e4f35e2a8197"
+    },
+    {
+      "file": "ariel-pose-46.glb",
+      "sha256": "25ff72959011acfab7d5f41c97c158d864f83d7e3086852c975c925fae98a674"
+    },
+    {
+      "file": "ariel-pose-49.glb",
+      "sha256": "3db3314c6bfddde32f238fed9e7512d8624c11d677b275c2e8b777f4d41895e2"
+    },
+    {
+      "file": "ariel-pose-55.glb",
+      "sha256": "8d0c8b1067866a3f66f4b3a6b1b25949266f43f28e94b4734ef4d00d3fd3a34d"
+    },
+    {
+      "file": "ariel-pose-57.glb",
+      "sha256": "4a0c2d04c7efbbc1cb1716d3e06178aeed478142523705063a9d1d580f02fbba"
+    },
+    {
+      "file": "ariel-pose-62.glb",
+      "sha256": "815d1ca336924778bb3d324eba2c722302be8cb5967f97886aab1e2f02edd302"
+    },
+    {
+      "file": "ariel-pose-74.glb",
+      "sha256": "b00e88969da07202bc1876369b5f9a9f8e32e1d52709bb55097ea7bc7ead33e8"
+    },
+    {
+      "file": "ariel-pose-79.glb",
+      "sha256": "6206a983aeff8a0bccfcc1b48d3c76e267f9993de48d69175e8d916ec55c3a84"
+    },
+    {
+      "file": "chloe-pose-01.glb",
+      "sha256": "9e83616e00ab0976e58e0582d9996f11375831ce14dc3e59e5c58c6c44d59df5"
+    },
+    {
+      "file": "chloe-pose-02.glb",
+      "sha256": "e643b458ebe4dfabe886ec023c06dee5915945b643075e6afd56578b9845fd53"
+    },
+    {
+      "file": "chloe-pose-06.glb",
+      "sha256": "dd896d29360e260fbd01d033acfee6549680a8a2ad6f7f97105193175a94d483"
+    },
+    {
+      "file": "chloe-pose-08.glb",
+      "sha256": "c04d82ae49499bcc60f45a610e279284b064d83990b84fb0d7e82524d80d1b76"
+    },
+    {
+      "file": "chloe-pose-10.glb",
+      "sha256": "d617cfedeffa66e499dff078d2fad9c686e183e355a63b55134a6bb971855697"
+    },
+    {
+      "file": "chloe-pose-12.glb",
+      "sha256": "750e0de9e29ddd7f71426301ec86e6945cb839fb21ad6b1527c77a1982a83321"
+    },
+    {
+      "file": "chloe-pose-13.glb",
+      "sha256": "92d5b14c35c9df8b3f18149a3cf853d0f1aedc5394e753ae06b15feea32d52bc"
+    },
+    {
+      "file": "chloe-pose-15.glb",
+      "sha256": "74a3883fc89b9862a4e01ddde08f271ec94fb744ed4e6c54f5142bbd8d498e87"
+    },
+    {
+      "file": "chloe-pose-18.glb",
+      "sha256": "d646978c188775c532a3f66c97ffb8a5ad6c61d8ce4b6e0839b42ab90fbc514c"
+    },
+    {
+      "file": "chloe-pose-25.glb",
+      "sha256": "6df60c570476d56e4c2a646c387baf5d725d56bae9581440d36f0a9eeeb51230"
+    },
+    {
+      "file": "lucid-pose-09.glb",
+      "sha256": "4a37e443d746fe4f19ca5a026fc5e1718c53420f90e29f6b5d92409a3d7a1615"
+    },
+    {
+      "file": "lucid-pose-12.glb",
+      "sha256": "4606f8e66f24c5e92daaa9b8f8f0bfb1facbed1bf5fa452e3db91e8bd652b19b"
+    },
+    {
+      "file": "lucid-pose-21.glb",
+      "sha256": "06bb0277243faed35755c41274c4bbe91dd2ab9287c8b957dedf7bef3aca5c58"
+    },
+    {
+      "file": "lucid-pose-33.glb",
+      "sha256": "f7881ccb4139d39e37313aca583eb0b2d1234cdb5d50276b17747099e2b5d0fa"
+    },
+    {
+      "file": "lucid-pose-41.glb",
+      "sha256": "c41503d8fd13a882adfd944432a1a615347db5ad39f364eb24157621d0f02cbd"
+    },
+    {
+      "file": "lucid-pose-56.glb",
+      "sha256": "8a751470b616621926ea1ff94076032105132f7de78c1f9793a40cfcf069954c"
+    },
+    {
+      "file": "lucid-pose-72.glb",
+      "sha256": "03b13680d8d1570fb2989b5ac0b770f388873ca0bbf7d63deeaa047d5f222041"
+    },
+    {
+      "file": "lucid-pose-nat-42.glb",
+      "sha256": "f97d737921a2eb3ccd15c69490fff29a655ed77917bccb10f7c171664cf8e8e2"
+    },
+    {
+      "file": "nat18-pose-106.glb",
+      "sha256": "a800598113dc0161d8bc24d8e6469af1d590e1f798a0a213b42d733cc8c64623"
+    },
+    {
+      "file": "nat18-pose-53.glb",
+      "sha256": "70e100a47bb7a7c160d836aa6c8f9ff910cf39aacc308c19f4a3a0020bfd8ef4"
+    },
+    {
+      "file": "nat18-pose-65.glb",
+      "sha256": "2814feb79188e5a8998dd4b2ae246f29f914894b9031e2fbb92c577c8dd0b206"
+    },
+    {
+      "file": "nat18-pose-67.glb",
+      "sha256": "b41711c51d423b4fc6e3f7ced587d8fa402504c42e2a3281113c0490d80d84dc"
+    },
+    {
+      "file": "nat18-pose-69.glb",
+      "sha256": "782278b1226a1d432349e1ab7ec14a2155ad9d4086e1f07980fe9e4191165c38"
+    },
+    {
+      "file": "nat18-pose-72.glb",
+      "sha256": "b17c7151a6eb7b38b53850bd91e8c5f48ae83669c6d43b0e34d47e0e2a0e9e03"
+    },
+    {
+      "file": "nat18-pose-93.glb",
+      "sha256": "68b3a0e0c4b5c7fdc8ab5e1da625b5103312050dcc2f677468a20813e6767951"
+    },
+    {
+      "file": "nat18-pose-94.glb",
+      "sha256": "5b1ad61bc478866f94b941ef0723360e434bb51c6bbe2ce58b8d800815d5aa82"
+    },
+    {
+      "file": "nat18-pose-95.glb",
+      "sha256": "3d495fd58b692ef11bee5188599fbeea30b4f286ef58e7638cf9e8f08eef07b0"
+    },
+    {
+      "file": "nat18-pose-97.glb",
+      "sha256": "b5cb908ae6d5089bc4a3c116a809a0959e01e1d815c7f8fd271d9acbdb0db9a7"
+    },
+    {
+      "file": "nat21-pose-79.glb",
+      "sha256": "953f0f7dd71ce6058f24fac289b0fbc39fed9c4ee3f482d40fdf07475cf1ccdb"
+    },
+    {
+      "file": "nat21-pose-86.glb",
+      "sha256": "8c24d5fb5647d17929787797960fad1975b2332fe995966e86bfc8f456c2ca6b"
+    },
+    {
+      "file": "nat21-pose-88.glb",
+      "sha256": "1cb05bffeb7b3cbcb780eab7f0860ed369a854acefa5f9c604e38b0703e2d19d"
+    },
+    {
+      "file": "nat21-pose-90.glb",
+      "sha256": "1dac755444fe22f3ae5d37426e0d4c2e7538b9cb5cb4beaa97669b5d6cbcfedf"
+    },
+    {
+      "file": "nat21-pose-91.glb",
+      "sha256": "3f9330bad05ed61e2778b39a0656d0130973b069e9e35489705adbb43af5a1ba"
+    }
+  ]
+}

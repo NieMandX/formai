@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as T from "three";
 import { REFERENCE_MODELS } from "../src/reference-catalog.js";
+import { SpatialMenu } from "../src/scene/xr-menu.js";
 import { makeRobot } from "../src/scene/demos.js";
 import { refreshSkinnedBounds } from "../src/scene/model-bounds.js";
 import {
@@ -137,6 +138,17 @@ test("paginated collection and clips retain access to all items", () => {
     assert.ok(layout.controls.some((c) => c.id === `clip:${page * 3 + 2}`));
   }
 });
+test("collection pagination moves immediately after removing models from the last page", async () => {
+  const oldPage = Math.ceil((REFERENCE_MODELS.length + 3 + 12) / 4) - 1;
+  const lastRemainingPage = Math.ceil((REFERENCE_MODELS.length + 3) / 4) - 1;
+  const menu = {
+    viewer: {}, page: oldPage, sync() {},
+    layout: buildMenuLayout({ ...state, tab: "collection", models: [], page: oldPage }),
+  };
+  await SpatialMenu.prototype.activate.call(menu, "page:prev");
+  assert.equal(menu.page, lastRemainingPage - 1);
+});
+
 test("slider hit area maps endpoints accurately and clamps dragging beyond track", () => {
   const c = buildMenuLayout({ ...state, tab: "object" }).controls.find(
     (c) => c.id === "scale",

@@ -1,7 +1,7 @@
 import * as T from "three";
 import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 import { SpatialMenu } from "./xr-menu.js";
-import { applyTwoHandTransform, validTeleport, moveSmooth, buttonEdge } from "./xr-math.js";
+import { applyTwoHandTransform, validTeleport, moveSmooth, turnSmooth, buttonEdge } from "./xr-math.js";
 
 export function installXR(viewer) {
   const { renderer, scene, rig } = viewer;
@@ -10,7 +10,6 @@ export function installXR(viewer) {
     controls = [],
     grips = new Set();
   let gesture = null,
-    snapReady = true,
     needsPlacement = false,
     session = null,
     disposed = false,
@@ -287,7 +286,6 @@ export function installXR(viewer) {
     session = renderer.xr.getSession();
     session?.addEventListener("visibilitychange", visibilityChanged);
     focused = true;
-    snapReady = true;
     needsPlacement = 2;
     viewer.emit();
   }
@@ -354,7 +352,7 @@ export function installXR(viewer) {
         selectionId = selected.id;
       }
       marker.visible = false;
-      let movementAxis = 0, teleported = false;
+      let movementAxis = 0, turningAxis = 0, teleported = false;
       for (const c of controls) {
         const input = c.input;
         if (!input || input.hand || !c.ray.visible) {
@@ -401,27 +399,7 @@ export function installXR(viewer) {
           y = axes[3] || 0;
         if (input.handedness === "right") {
           movementAxis = y;
-          if (Math.abs(x) < 0.25) snapReady = true;
-          if (
-            snapReady &&
-            Math.abs(x) > 0.7 &&
-            !grips.size &&
-            !c.menuPress &&
-            !hit
-          ) {
-            const p = head().getWorldPosition(new T.Vector3()),
-              yaw = (-Math.sign(x) * Math.PI) / 6;
-            rig.position
-              .sub(p)
-              .applyAxisAngle(new T.Vector3(0, 1, 0), yaw)
-              .add(p);
-            rig.rotation.y += yaw;
-            rig.updateMatrixWorld(true);
-            renderer.xr.updateCamera(viewer.camera);
-            snapReady = false;
-            menu.close();
-            pulse(c, 0.2, 20);
-          }
+          turningAxis = x;
         }
         if (input.handedness === "left") {
           const aiming = y < -0.65 && !grips.size && !c.menuPress && !hit;
@@ -457,6 +435,7 @@ export function installXR(viewer) {
         }
       }
       if (!grips.size && !teleported && !controls.some((c) => c.menuPress || c.teleporting)) {
+        if (turnSmooth(rig, head(), turningAxis, dt)) renderer.xr.updateCamera(viewer.camera);
         moveSmooth(rig, head(), movementAxis, dt, viewer.models.values(), viewer.gallery.plinth);
         rig.updateMatrixWorld(true);
       }

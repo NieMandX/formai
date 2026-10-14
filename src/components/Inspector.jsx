@@ -1,4 +1,5 @@
 import { RotateCcw, Play, Pause, Sparkles } from "lucide-react";
+import { referenceById, referenceDetail } from "../reference-catalog.js";
 export function Toggle({ label, checked, onChange }) {
   return (
     <label className="toggle-row">
@@ -26,7 +27,7 @@ export function Inspector({ model, viewer, settings, setSettings }) {
             ? model.format === "DEMO"
               ? "Демонстрационная модель"
               : model.reference
-                ? "Референс · 8K · максимальное качество"
+                ? referenceDetail(referenceById(model.id))
               : `${model.format} · локальная коллекция`
             : "Добавьте модель в коллекцию"}
         </p>

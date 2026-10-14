@@ -25,6 +25,8 @@ export function Inspector({ model, viewer, settings, setSettings }) {
           {model
             ? model.format === "DEMO"
               ? "Демонстрационная модель"
+              : model.reference
+                ? "Референс · 8K · максимальное качество"
               : `${model.format} · локальная коллекция`
             : "Добавьте модель в коллекцию"}
         </p>

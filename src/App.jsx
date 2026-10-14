@@ -282,7 +282,7 @@ export default function App() {
             working.current = true;
             setBusy("Открываем модель…");
             try {
-              await viewer.current?.ensureDemo(id);
+              await viewer.current?.ensureModel(id);
             } catch (e) {
               notify(e.message, true);
             } finally {
@@ -293,7 +293,7 @@ export default function App() {
           onFiles={importFiles}
           onURL={() => setDialog("url")}
           onDelete={remove}
-          busy={!!busy}
+          busy={!!busy || !!snapshot.catalogLoad}
           onHelp={() => setDialog("help")}
         />
         <section className="viewport" aria-label="Галерея">
@@ -376,10 +376,10 @@ export default function App() {
             </button>
           </div>
           <p className="canvas-hint">Вращайте, приближайте, исследуйте</p>
-          {busy && (
+          {(busy || snapshot.catalogLoad) && (
             <div className="loading-indicator" role="status">
               <LoaderCircle className="spin" size={18} />
-              {busy}
+              {snapshot.catalogLoad?.text || busy}
             </div>
           )}
           {fatal && (

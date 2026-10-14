@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { extension, normalizedPath, validateModelURL } from "../model-utils";
+import { downloadModel } from "./download.js";
 
 export function disposeObject(root) {
   const textures = new Set(),
@@ -115,7 +116,7 @@ async function parser(ext, data, path, manager, renderer, cleanups) {
   return { root: new THREE.Mesh(geometry, material), clips: [] };
 }
 
-export async function loadModel({ files, main, url }, renderer) {
+export async function loadModel({ files, main, url, signal, onProgress, expectedBytes }, renderer) {
   const manager = new THREE.LoadingManager();
   const urls = [],
     cleanups = [],
@@ -178,16 +179,7 @@ export async function loadModel({ files, main, url }, renderer) {
       ext = extension(file.name);
     } else {
       const parsed = validateModelURL(url);
-      const response = await fetch(parsed.href, {
-        signal: AbortSignal.timeout(45000),
-      });
-      if (!response.ok)
-        throw new Error(`Сервер вернул HTTP ${response.status}.`);
-      const length = Number(response.headers.get("content-length"));
-      if (length > 100 * 1024 * 1024) throw new Error("Файл превышает 100 МБ.");
-      data = await response.arrayBuffer();
-      if (data.byteLength > 100 * 1024 * 1024)
-        throw new Error("Файл превышает 100 МБ.");
+      data = await downloadModel(parsed.href, { signal, onProgress, expectedBytes });
       ext = extension(parsed.pathname);
       path = new URL(".", parsed).href;
     }

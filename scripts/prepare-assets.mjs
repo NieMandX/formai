@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import { makeRobot } from "../src/scene/demos.js";
+import { prepareReferences } from "./prepare-references.mjs";
 const require = createRequire(import.meta.url),
   threeRoot = path.resolve(path.dirname(require.resolve("three")), "..");
 for (const [folder, files] of Object.entries({
@@ -104,3 +105,4 @@ await copyFile(
   "public/xr-profiles/LICENSE.md",
 );
 console.log("Prepared locally hosted Quest Touch Plus controller profiles.");
+await prepareReferences();

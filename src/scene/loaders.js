@@ -44,6 +44,7 @@ async function parser(ext, data, path, manager, renderer, cleanups) {
       .setWorkerLimit(2);
     const ktx = new KTX2Loader()
       .setTranscoderPath(`${import.meta.env.BASE_URL}decoders/basis/`)
+      .setWorkerLimit(2)
       .detectSupport(renderer);
     cleanups.push(
       () => draco.dispose(),

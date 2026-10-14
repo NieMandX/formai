@@ -1,4 +1,5 @@
 // Pixel-space layout shared by the spatial renderer and interaction tests.
+import { REFERENCE_MODELS, referenceById, referenceDetail } from "../reference-catalog.js";
 export const MENU = {
   width: 1440,
   height: 1080,
@@ -128,7 +129,9 @@ export function buildMenuLayout(state) {
     );
     label(
       state.confirm.type === "delete"
-        ? "Локальная сохранённая копия тоже будет удалена."
+        ? state.confirm.reference
+          ? "Поза останется в каталоге. Её можно открыть снова."
+          : "Локальная сохранённая копия тоже будет удалена."
         : "Модели останутся в текущей комнате.",
       330,
       460,
@@ -152,7 +155,8 @@ export function buildMenuLayout(state) {
   }
   if (state.tab === "collection") {
     const entries = [
-      ...state.models,
+      ...REFERENCE_MODELS.map((entry) => ({ ...entry, reference: true })),
+      ...state.models.filter((m) => !referenceById(m.id)),
       ...DEMOS.filter((d) => !state.models.some((m) => m.id === d.id)).map(
         (d) => ({ ...d, demo: true }),
       ),
@@ -165,7 +169,9 @@ export function buildMenuLayout(state) {
         active: model?.id === entry.id,
         icon: "box",
         thumb: entry.id,
-        subtitle: entry.demo
+        subtitle: entry.reference
+          ? referenceDetail(entry) + (model?.id === entry.id ? " · выбрана" : "")
+          : entry.demo
           ? "Добавить пример · " + entry.detail
           : `${entry.format} · ${entry.animations || 0} анимаций${model?.id === entry.id ? " · выбрана" : ""}`,
         disabled: state.busy,

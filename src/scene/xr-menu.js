@@ -111,8 +111,8 @@ export class SpatialMenu {
       page: this.page,
       clipPage: this.clipPage,
       confirm: this.confirm,
-      busy: this.busy,
-      notice: this.notice,
+      busy: this.busy || !!this.viewer.catalogLoad,
+      notice: this.viewer.catalogLoad?.text || this.notice,
       settings: this.viewer.settings,
       model: this.modelState(),
       models: [...this.viewer.models.values()].map((m) => ({
@@ -270,13 +270,13 @@ export class SpatialMenu {
         }
       }
     } else if (id.startsWith("model:")) {
+      if (this.busy || v.catalogLoad) return;
       const modelId = id.slice(6);
       this.busy = true;
       this.toast("Открываем модель…");
       try {
-        if (v.models.has(modelId)) v.select(modelId);
-        else await v.ensureDemo(modelId);
-        this.toast("Выбрана: " + v.selected.name);
+        await v.ensureModel(modelId);
+        if (v.selected) this.toast("Выбрана: " + v.selected.name);
         this.clipPage = 0;
       } catch (e) {
         this.toast(e.message);
@@ -307,6 +307,7 @@ export class SpatialMenu {
         type: "delete",
         id: v.selected.id,
         name: v.selected.name,
+        reference: !!v.selected.reference,
       };
     else if (id.startsWith("lighting:"))
       v.setSceneSetting("lighting", id.slice(9));

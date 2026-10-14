@@ -6,6 +6,7 @@ import { disposeObject, loadModel } from "./loaders";
 import { installXR } from "./xr";
 import { clampScale } from "../model-utils";
 import { refreshSkinnedBounds } from "./model-bounds.js";
+import { referenceById } from "../reference-catalog.js";
 
 export class Viewer {
   constructor(element, onChange) {
@@ -14,6 +15,8 @@ export class Viewer {
     this.models = new Map();
     this.selected = null;
     this.disposed = false;
+    this.catalogLoad = null;
+    this.catalogAbort = null;
     this.autoRotate = false;
     this.settings = {
       grid: true,
@@ -269,10 +272,55 @@ export class Viewer {
     this.select(meta.id);
     return model;
   }
-  async ensureDemo(id) {
+  async ensureModel(id) {
+    if (this.catalogLoad) throw new Error("Дождитесь загрузки выбранной позы.");
     if (this.models.has(id)) {
       this.select(id);
+      this.focus();
       return;
+    }
+    const reference = referenceById(id);
+    if (reference) {
+      const previous = [...this.models.values()].filter((m) => m.reference);
+      if (this.models.size - previous.length >= 12)
+        throw new Error("В комнате уже 12 моделей. Уберите одну и выберите позу снова.");
+      this.catalogAbort = new AbortController();
+      this.catalogLoad = { id, text: `Загружаем ${reference.name} · 0%` };
+      this.emit();
+      let result;
+      try {
+        result = await loadModel({
+          url: new URL(import.meta.env.BASE_URL + "models/references/" + reference.file, location.href).href,
+          expectedBytes: reference.bytes,
+          signal: this.catalogAbort.signal,
+          onProgress: (fraction) => {
+            const text = fraction === 1
+              ? `Подготавливаем ${reference.name}…`
+              : `Загружаем ${reference.name} · ${Math.round((fraction || 0) * 100)}%`;
+            if (this.catalogLoad?.text !== text) {
+              this.catalogLoad = { id, text };
+              this.emit();
+            }
+          },
+        }, this.renderer);
+        if (this.disposed) {
+          disposeObject(result.root);
+          return;
+        }
+        // Release the previous 8K textures before the next GPU upload.
+        // Keep it visible until the download and parsing have succeeded.
+        for (const model of previous) this.remove(model.id);
+        this.remove("knot");
+        const loaded = this.add(result, {
+          id, name: reference.name, format: "GLB", reference: true,
+        });
+        this.focus();
+        return loaded;
+      } finally {
+        this.catalogAbort = null;
+        this.catalogLoad = null;
+        if (!this.disposed) this.emit();
+      }
     }
     if (id === "robot") {
       return this.import(
@@ -286,6 +334,7 @@ export class Viewer {
       );
     }
     const names = { knot: "Узел", architecture: "Архитектура", robot: "Робот" };
+    if (!names[id]) throw new Error("Модель не найдена в каталоге.");
     this.add(makeDemo(id), { id, name: names[id], format: "DEMO" });
   }
   select(id) {
@@ -431,14 +480,16 @@ export class Viewer {
     this.onChange({
       settings: this.settings,
       thumbnails: this.thumbnails,
+      catalogLoad: this.catalogLoad,
       models: [...this.models.values()].map(
-        ({ id, name, format, clips, triangles, bones }) => ({
+        ({ id, name, format, clips, triangles, bones, reference }) => ({
           id,
           name,
           format,
           animations: clips.length,
           triangles,
           bones,
+          reference: !!reference,
         }),
       ),
       selected: m
@@ -446,6 +497,7 @@ export class Viewer {
             id: m.id,
             name: m.name,
             format: m.format,
+            reference: !!m.reference,
             scale: m.wrapper.scale.x,
             position: m.wrapper.position.toArray(),
             rotation: (m.wrapper.rotation.y * 180) / Math.PI,
@@ -466,6 +518,7 @@ export class Viewer {
   }
   dispose() {
     this.disposed = true;
+    this.catalogAbort?.abort();
     this.renderer.setAnimationLoop(null);
     this.observer.disconnect();
     this.orbit.dispose();

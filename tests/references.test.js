@@ -1,15 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { REFERENCE_MODELS } from "../src/reference-catalog.js";
-import { buildMenuLayout } from "../src/scene/xr-menu-model.js";
+import { readFileSync } from "node:fs";
+import { REFERENCE_MODELS, referenceDetail, referencePath } from "../src/reference-catalog.js";
+import { buildMenuLayout, DEMOS } from "../src/scene/xr-menu-model.js";
 import { downloadModel } from "../src/scene/download.js";
 
-test("all six full-quality references are selectable in VR before any import", () => {
+test("all 43 source poses remain selectable across the complete VR catalogue", () => {
   const state = { tab: "collection", models: [], model: null, settings: {}, page: 0 };
-  const controls = [0, 1, 2].flatMap((page) => buildMenuLayout({ ...state, page }).controls);
-  assert.equal(REFERENCE_MODELS.length, 6);
+  const pages = Math.ceil((REFERENCE_MODELS.length + DEMOS.length) / 4);
+  const controls = Array.from({ length: pages }, (_, page) => buildMenuLayout({ ...state, page }).controls).flat();
+  const sources = JSON.parse(readFileSync(new URL("../scripts/reference-sources.json", import.meta.url))).models;
+  assert.equal(REFERENCE_MODELS.length, 43);
+  assert.equal(new Set(REFERENCE_MODELS.map((m) => m.id)).size, 43);
+  assert.deepEqual(new Set(REFERENCE_MODELS.map((m) => m.file)), new Set(sources.map((m) => m.file.replace(".glb", "-uastc.glb"))));
+  assert.equal(REFERENCE_MODELS.filter((m) => m.textureSize === 8192).length, 38);
+  assert.equal(REFERENCE_MODELS.filter((m) => m.textureSize === 4096).length, 5);
   for (const model of REFERENCE_MODELS) {
-    assert.equal(model.textureSize, 8192);
+    assert.ok([4096, 8192].includes(model.textureSize));
+    assert.ok(referenceDetail(model).startsWith(`${model.textureSize / 1024}K`));
     assert.match(model.sha256, /^[a-f0-9]{64}$/);
     assert.ok(model.bytes < 100 * 1024 * 1024);
     assert.ok(controls.some((c) => c.id === `model:${model.id}` && !c.disabled));
@@ -19,6 +27,19 @@ test("all six full-quality references are selectable in VR before any import", (
   assert.equal(withLoaded.controls.filter((c) => c.id === `model:${loaded.id}`).length, 1);
   const busy = buildMenuLayout({ ...state, busy: true });
   assert.ok(busy.controls.filter((c) => c.id.startsWith("model:")).every((c) => c.disabled));
+});
+
+test("asset sites stay within Pages limits and resolve correctly from production and development", () => {
+  const sizes = new Map();
+  for (const model of REFERENCE_MODELS) {
+    assert.match(model.site, /^formai(?:-library-\d+)?$/);
+    sizes.set(model.site, (sizes.get(model.site) || 0) + model.bytes);
+    const production = new URL(referencePath(model, "./"), "https://niemandx.github.io/formai/");
+    assert.equal(production.origin, "https://niemandx.github.io");
+    assert.equal(production.pathname, `/${model.site}/models/references/${model.file}`);
+    assert.equal(referencePath(model, "/", true), `/models/references/${model.file}`);
+  }
+  assert.ok([...sizes.values()].every((bytes) => bytes <= 850 * 1024 ** 2));
 });
 
 test("streamed model downloads report progress and preserve every byte", async (t) => {

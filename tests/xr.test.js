@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as T from "three";
+import { REFERENCE_MODELS } from "../src/reference-catalog.js";
 import { makeRobot } from "../src/scene/demos.js";
 import { refreshSkinnedBounds } from "../src/scene/model-bounds.js";
 import {
@@ -118,7 +119,7 @@ test("paginated collection and clips retain access to all items", () => {
     format: "GLB",
   }));
   const ids = new Set();
-  for (let page = 0; page < 6; page++)
+  for (let page = 0; page < Math.ceil((REFERENCE_MODELS.length + models.length + 3) / 4); page++)
     for (const c of buildMenuLayout({
       ...state,
       models,

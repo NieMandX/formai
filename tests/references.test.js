@@ -1,15 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { REFERENCE_MODELS } from "../src/reference-catalog.js";
+import { REFERENCE_MODELS, referenceDetail } from "../src/reference-catalog.js";
 import { buildMenuLayout } from "../src/scene/xr-menu-model.js";
 import { downloadModel } from "../src/scene/download.js";
 
-test("all six full-quality references are selectable in VR before any import", () => {
+test("three KTX2 PBR test models retain source resolution and are selectable in VR", () => {
   const state = { tab: "collection", models: [], model: null, settings: {}, page: 0 };
   const controls = [0, 1, 2].flatMap((page) => buildMenuLayout({ ...state, page }).controls);
-  assert.equal(REFERENCE_MODELS.length, 6);
+  assert.equal(REFERENCE_MODELS.length, 3);
+  assert.deepEqual(new Set(REFERENCE_MODELS.map((m) => m.id)), new Set(["reference-ariel-45", "reference-chloe-01", "reference-nat18-53"]));
   for (const model of REFERENCE_MODELS) {
-    assert.equal(model.textureSize, 8192);
+    assert.equal(model.textureSize, model.id === "reference-nat18-53" ? 4096 : 8192);
+    assert.equal(model.materialVersion, 1);
+    assert.match(model.file, /-uastc\.glb$/);
+    assert.ok(referenceDetail(model).startsWith(`${model.textureSize / 1024}K`));
     assert.match(model.sha256, /^[a-f0-9]{64}$/);
     assert.ok(model.bytes < 100 * 1024 * 1024);
     assert.ok(controls.some((c) => c.id === `model:${model.id}` && !c.disabled));

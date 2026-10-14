@@ -291,8 +291,10 @@ export class Viewer {
       this.emit();
       let result;
       try {
+        const address = new URL(referencePath(reference, import.meta.env.BASE_URL, import.meta.env.DEV), location.href);
+        address.searchParams.set("v", reference.sha256.slice(0, 16));
         result = await loadModel({
-          url: new URL(referencePath(reference, import.meta.env.BASE_URL, import.meta.env.DEV), location.href).href,
+          url: address.href,
           expectedBytes: reference.bytes,
           signal: this.catalogAbort.signal,
           onProgress: (fraction) => {

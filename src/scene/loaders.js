@@ -56,7 +56,12 @@ async function parser(ext, data, path, manager, renderer, cleanups) {
       .setKTX2Loader(ktx)
       .setMeshoptDecoder(MeshoptDecoder)
       .parseAsync(data, path);
-    await hydrateSourceMaterials(result);
+    try {
+      await hydrateSourceMaterials(result, renderer);
+    } catch (error) {
+      disposeObject(result.scene);
+      throw error;
+    }
     return { root: result.scene, clips: result.animations };
   }
   if (ext === "fbx") {

@@ -8,7 +8,7 @@ const nativeMaps = {
 };
 const colorSlots = new Set(["_SpecTex", "_WetSpecTex", "_SSSColor", "_velvetMask"]);
 
-export async function hydrateSourceMaterials(result) {
+export async function hydrateSourceMaterials(result, renderer) {
   const materials = new Set();
   result.scene.traverse((mesh) => {
     for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material])
@@ -17,6 +17,8 @@ export async function hydrateSourceMaterials(result) {
   await Promise.all([...materials].map(async (material) => {
     const data = material.userData.formaiMaterial;
     const maps = {};
+    const anisotropy = renderer?.capabilities.getMaxAnisotropy() || 1;
+    if (material.map) material.map.anisotropy = anisotropy;
     for (const [slot, index] of Object.entries(data.maps)) {
       if (!Number.isInteger(index) || index < 0) throw new Error("Некорректная карта материала FORMAI.");
       const texture = nativeMaps[slot] && material[nativeMaps[slot]]
@@ -24,6 +26,7 @@ export async function hydrateSourceMaterials(result) {
       texture.colorSpace = colorSlots.has(slot) || (data.kind === "detail" && slot === "_microTex1")
         ? THREE.SRGBColorSpace : THREE.NoColorSpace;
       texture.flipY = false;
+      texture.anisotropy = slot === "_BSSRDF" ? 1 : anisotropy;
       if (slot === "_BSSRDF") texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
       // Direct properties let disposeObject release all custom texture resources.
       material[`formaiMap${slot}`] = maps[slot] = texture;

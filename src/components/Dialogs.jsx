@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { REFERENCE_MODELS } from "../reference-catalog.js";
 import {
   X,
   ArrowUpRight,
@@ -37,7 +38,8 @@ export function Help({ onClose }) {
     <Modal title="Ваше пространство в VR" onClose={onClose}>
       <p className="modal-intro">
         Откройте адрес этой страницы в Meta Quest Browser на Quest 3 и нажмите
-        «Войти в VR». В коллекции доступны шесть готовых поз в качестве 8K.
+        «Войти в VR». В коллекции — {REFERENCE_MODELS.length} поз
+        с исходной детализацией и текстурами до 8K.
       </p>
       <div className="help-block">
         <Headset size={22} />
@@ -47,7 +49,8 @@ export function Help({ onClose }) {
             Курок — выбрать модель или кнопку. Боковая кнопка — захват.
             Захватите модель двумя контроллерами и разведите руки для
             увеличения. Левый стик вперёд — выбрать место на полу, отпустить —
-            переместиться. Правый стик — поворот на 30°.
+            переместиться. Правый стик вперёд/назад — плавно идти по направлению
+            взгляда; влево/вправо — поворот на 30°. Отпустите стик, чтобы остановиться.
           </p>
           <p>
             X или A открывает меню; Y или B возвращает его перед вами. В меню

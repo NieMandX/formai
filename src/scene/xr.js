@@ -1,7 +1,7 @@
 import * as T from "three";
 import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 import { SpatialMenu } from "./xr-menu.js";
-import { applyTwoHandTransform, validTeleport, buttonEdge } from "./xr-math.js";
+import { applyTwoHandTransform, validTeleport, moveSmooth, buttonEdge } from "./xr-math.js";
 
 export function installXR(viewer) {
   const { renderer, scene, rig } = viewer;
@@ -354,6 +354,7 @@ export function installXR(viewer) {
         selectionId = selected.id;
       }
       marker.visible = false;
+      let movementAxis = 0, teleported = false;
       for (const c of controls) {
         const input = c.input;
         if (!input || input.hand || !c.ray.visible) {
@@ -399,6 +400,7 @@ export function installXR(viewer) {
           x = axes[2] || 0,
           y = axes[3] || 0;
         if (input.handedness === "right") {
+          movementAxis = y;
           if (Math.abs(x) < 0.25) snapReady = true;
           if (
             snapReady &&
@@ -415,6 +417,7 @@ export function installXR(viewer) {
               .add(p);
             rig.rotation.y += yaw;
             rig.updateMatrixWorld(true);
+            renderer.xr.updateCamera(viewer.camera);
             snapReady = false;
             menu.close();
             pulse(c, 0.2, 20);
@@ -444,6 +447,7 @@ export function installXR(viewer) {
           } else if (c.teleporting) {
             if (Math.abs(y) < 0.3 && c.teleportTarget && !grips.size && !hit) {
               teleportTo(c.teleportTarget);
+              teleported = true;
               menu.close();
               pulse(c, 0.4, 35);
             }
@@ -451,6 +455,10 @@ export function installXR(viewer) {
             c.teleportTarget = null;
           }
         }
+      }
+      if (!grips.size && !teleported && !controls.some((c) => c.menuPress || c.teleporting)) {
+        moveSmooth(rig, head(), movementAxis, dt, viewer.models.values(), viewer.gallery.plinth);
+        rig.updateMatrixWorld(true);
       }
       menu.update(dt);
       renderer.xr.updateCamera(viewer.camera);

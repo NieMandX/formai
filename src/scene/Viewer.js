@@ -5,6 +5,7 @@ import { makeDemo } from "./demos";
 import { disposeObject, loadModel } from "./loaders";
 import { installXR } from "./xr";
 import { clampScale } from "../model-utils";
+import { refreshSkinnedBounds } from "./model-bounds.js";
 
 export class Viewer {
   constructor(element, onChange) {
@@ -106,6 +107,10 @@ export class Viewer {
       last = time;
       for (const m of this.models.values()) {
         if (m.playing) m.mixer?.update(dt * m.speed);
+        if (m.bones && m.playing && time - (m.boundsAt || 0) > 100) {
+          refreshSkinnedBounds(m.wrapper);
+          m.boundsAt = time;
+        }
       }
       if (this.autoRotate && this.selected && !this.xr.isManipulating())
         this.selected.wrapper.rotation.y += dt * 0.25;
@@ -259,6 +264,7 @@ export class Viewer {
       fit: 1.8 / max,
     };
     this.models.set(meta.id, model);
+    if (bones) refreshSkinnedBounds(wrapper);
     if (clips.length) model.action = model.mixer.clipAction(clips[0]).play();
     this.select(meta.id);
     return model;
@@ -340,6 +346,7 @@ export class Viewer {
     if (!m?.action) return;
     m.action.time = T.MathUtils.clamp(seconds, 0, m.clips[m.clip].duration);
     m.mixer.update(0);
+    if (m.bones) refreshSkinnedBounds(m.wrapper);
     this.emit();
   }
   setSceneSetting(key, value) {

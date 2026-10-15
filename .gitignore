@@ -9,3 +9,5 @@ public/models/
 public/xr-profiles/
 local-models/
 .pnpm-store/
+
+__pycache__/

@@ -72,7 +72,7 @@ export function installXR(viewer) {
   function home() {
     cancelInteractions();
     teleportTo(new T.Vector3(0, 0, 3.6));
-    menu.open(head());
+    menu.open(head(), "main");
   }
   function inspect() {
     if (!viewer.selected) return;
@@ -330,7 +330,7 @@ export function installXR(viewer) {
       if (disposed || !renderer.xr.isPresenting) return;
       rig.updateMatrixWorld(true);
       renderer.xr.updateCamera(viewer.camera);
-      if (needsPlacement && --needsPlacement === 0) menu.open(head());
+      if (needsPlacement && --needsPlacement === 0) menu.open(head(), "main");
       if (!focused) return;
       if ([...grips].some((c) => !c.grip.visible)) cancelGrab();
       const selected = viewer.selected;
@@ -377,12 +377,13 @@ export function installXR(viewer) {
           recenterButton = !!buttons[5]?.pressed;
         if (buttonEdge(c.menuButton, menuButton)) {
           cancelInteractions();
-          menu.toggle(head());
+          menu.toggle(head(), "main");
           pulse(c);
         }
         if (buttonEdge(c.recenterButton, recenterButton)) {
           cancelInteractions();
-          menu.open(head());
+          if (input.handedness === "right") menu.toggle(head(), "materials");
+          else menu.open(head());
           pulse(c);
         }
         c.menuButton = menuButton;

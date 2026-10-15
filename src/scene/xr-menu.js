@@ -6,6 +6,8 @@ import {
   sliderValue,
   clamp,
 } from "./xr-menu-model.js";
+import { buildMaterialMenuLayout } from "./xr-material-menu.js";
+import { materialControlState } from "./material-controls.js";
 
 const C = {
   paper: "#f5f4ef",
@@ -25,6 +27,10 @@ export class SpatialMenu {
     this.viewer = viewer;
     this.actions = actions;
     this.tab = "collection";
+    this.mode = "main";
+    this.materialTarget = "all";
+    this.materialPage = 0;
+    this.materialModelId = null;
     this.page = 0;
     this.clipPage = 0;
     this.confirm = null;
@@ -106,7 +112,15 @@ export class SpatialMenu {
     };
   }
   state() {
+    if (this.materialModelId !== (this.viewer.selected?.id || null)) {
+      this.materialModelId = this.viewer.selected?.id || null;
+      this.materialTarget = "all";
+      this.materialPage = 0;
+      this.pressed.clear();
+      this.hover.clear();
+    }
     return {
+      mode: this.mode,
       tab: this.tab,
       page: this.page,
       clipPage: this.clipPage,
@@ -115,6 +129,10 @@ export class SpatialMenu {
       notice: this.viewer.catalogLoad?.text || this.notice,
       settings: this.viewer.settings,
       model: this.modelState(),
+      ...(this.mode === "materials" ? {
+        materialTarget: this.materialTarget, materialPage: this.materialPage,
+        ...materialControlState(this.viewer.selected?.materialControls, this.materialTarget),
+      } : {}),
       models: [...this.viewer.models.values()].map((m) => ({
         id: m.id,
         name: m.name,
@@ -128,7 +146,7 @@ export class SpatialMenu {
       signature = JSON.stringify(state);
     if (signature !== this.lastSignature) {
       this.lastSignature = signature;
-      this.layout = buildMenuLayout(state);
+      this.layout = this.mode === "materials" ? buildMaterialMenuLayout(state) : buildMenuLayout(state);
       this.dirty = true;
     }
     if (this.dirty) this.draw();
@@ -142,11 +160,18 @@ export class SpatialMenu {
     if (forward.lengthSq() < 0.01) forward.set(0, 0, -1);
     forward.normalize();
     this.group.position.copy(head).addScaledVector(forward, MENU.distance);
+    // Leave the model visible beside its smaller material panel.
+    if (this.mode === "materials")
+      this.group.position.addScaledVector(new T.Vector3().crossVectors(forward, new T.Vector3(0, 1, 0)), 0.62);
     this.group.position.y = Math.max(0.8, head.y - 0.13);
     this.group.rotation.set(0, Math.atan2(-forward.x, -forward.z), 0);
     this.group.updateMatrixWorld(true);
   }
-  open(camera) {
+  open(camera, mode = this.mode) {
+    this.mode = mode;
+    this.surface.scale.setScalar(mode === "materials" ? 0.78 : 1);
+    this.hover.clear();
+    this.pressed.clear();
     this.confirm = null;
     this.group.visible = true;
     this.place(camera);
@@ -159,9 +184,9 @@ export class SpatialMenu {
     this.pressed.clear();
     this.dirty = true;
   }
-  toggle(camera) {
-    if (this.visible) this.close();
-    else this.open(camera);
+  toggle(camera, mode = this.mode) {
+    if (this.visible && this.mode === mode) this.close();
+    else this.open(camera, mode);
   }
   hit(ray) {
     if (!this.visible) return null;
@@ -235,6 +260,7 @@ export class SpatialMenu {
     if (c.id === "speed") v.setSpeed(value);
     if (c.id === "time") v.seek(value);
     if (c.id === "exposure") v.setSceneSetting("exposure", value);
+    if (c.id.startsWith("map:")) v.setMapGain(c.target, c.id.slice(4), value, c.modelId);
     this.sync();
   }
   toast(text) {
@@ -244,7 +270,18 @@ export class SpatialMenu {
   }
   async activate(id) {
     const v = this.viewer;
-    if (id.startsWith("tab:")) {
+    if (id === "material:prev" || id === "material:next") {
+      if (v.catalogLoad) return;
+      const entries = ["all", ...(v.selected?.materialControls || []).map(m => m.id)];
+      const index = Math.max(0, entries.indexOf(this.materialTarget));
+      this.materialTarget = entries[clamp(index + (id.endsWith("next") ? 1 : -1), 0, entries.length - 1)];
+      this.materialPage = 0;
+      this.pressed.clear();
+    } else if (id === "maps:prev" || id === "maps:next") {
+      const control = this.layout.controls.find(c => c.id === id);
+      if (control && !control.disabled) { this.materialPage = control.targetPage; this.pressed.clear(); }
+    } else if (id === "maps:reset") v.resetMapGains(this.materialTarget);
+    else if (id.startsWith("tab:")) {
       this.tab = id.slice(4);
       this.confirm = null;
       this.clipPage = 0;
@@ -488,13 +525,13 @@ export class SpatialMenu {
     c.roundRect(0, 0, MENU.width, MENU.height, 38);
     c.clip();
     c.fillStyle = C.side;
-    c.fillRect(0, 0, 284, MENU.height);
+    if (this.mode === "main") c.fillRect(0, 0, 284, MENU.height);
     c.restore();
     c.strokeStyle = C.line;
     c.lineWidth = 2;
     c.beginPath();
-    c.moveTo(316, 162);
-    c.lineTo(1360, 162);
+    c.moveTo(this.mode === "main" ? 316 : 48, 162);
+    c.lineTo(1374, 162);
     c.stroke();
     const hovered = new Set(this.hover.values()),
       pressed = new Set([...this.pressed.values()].map((p) => p.id));
@@ -525,6 +562,12 @@ export class SpatialMenu {
         this.rect(trackX, trackY, trackW, 10, 5, C.line);
         if (t > 0)
           this.rect(trackX, trackY, Math.max(10, trackW * t), 10, 5, C.accent);
+        if (b.reference !== undefined) {
+          const referenceX = trackX + trackW * (b.reference - b.min) / (b.max - b.min);
+          c.strokeStyle = C.muted;
+          c.lineWidth = 2;
+          c.beginPath(); c.moveTo(referenceX, trackY - 9); c.lineTo(referenceX, trackY + 19); c.stroke();
+        }
         c.beginPath();
         c.arc(
           trackX + t * trackW,

@@ -8,6 +8,7 @@ import { clampScale } from "../model-utils";
 import { refreshSkinnedBounds } from "./model-bounds.js";
 import { referenceById, referencePath } from "../reference-catalog.js";
 import { restoreReferenceEyeTransparency } from "./reference-materials.js";
+import { createMaterialControls, setMapGain, resetMapGains } from "./material-controls.js";
 
 export class Viewer {
   constructor(element, onChange) {
@@ -267,6 +268,7 @@ export class Viewer {
       bones,
       originalSize: size.toArray(),
       fit: 1.8 / max,
+      materialControls: createMaterialControls(root),
     };
     this.models.set(meta.id, model);
     if (bones) refreshSkinnedBounds(wrapper);
@@ -360,6 +362,14 @@ export class Viewer {
     if (!this.selected) return;
     this.selected.wrapper.scale.setScalar(clampScale(value));
     if (emit) this.emit();
+  }
+  setMapGain(target, id, value, modelId = this.selected?.id) {
+    if (!this.selected || this.selected.id !== modelId || this.catalogLoad) return;
+    setMapGain(this.selected.materialControls, target, id, value);
+  }
+  resetMapGains(target = "all") {
+    if (this.selected && !this.catalogLoad)
+      resetMapGains(this.selected.materialControls, target);
   }
   setPosition(axis, value) {
     if (!this.selected || !Number.isFinite(value)) return;

@@ -1,5 +1,6 @@
 """Attach source material maps to existing GLBs without recompressing their color maps.
 
+Requires Pillow, NumPy and KTX-Software 4.4.2.
 Source bundles contain JSON plus PNG maps exported from the original Unity assets.
 DXT5nm is unpacked to tangent-space XYZ. The V flip in the original trimesh GLB
 export reverses the bitangent, so the normal's green channel is inverted too.
@@ -8,7 +9,6 @@ import argparse
 import fcntl
 import hashlib
 import importlib.util
-import io
 import os
 import json
 import struct

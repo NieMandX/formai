@@ -170,7 +170,7 @@ export function buildMenuLayout(state) {
         icon: "box",
         thumb: entry.id,
         subtitle: entry.reference
-          ? referenceDetail(entry) + (model?.id === entry.id ? " · выбрана" : "")
+          ? referenceDetail(entry) + (model?.id === entry.id ? " · выбрана" : state.models.some(m => m.id === entry.id) ? " · в комнате" : "")
           : entry.demo
           ? "Добавить пример · " + entry.detail
           : `${entry.format} · ${entry.animations || 0} анимаций${model?.id === entry.id ? " · выбрана" : ""}`,

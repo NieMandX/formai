@@ -41,8 +41,10 @@ export function buildMaterialMenuLayout(state) {
   label(`Карты · ${page + 1} / ${pages}`, 712, 885, 28, { align: "center", muted: true });
   button("maps:next", "Далее", 1114, 834, 260, 80,
     { icon: "right", disabled: state.busy || page === pages - 1, targetPage: page + 1 });
-  button("maps:reset", "Вернуть исходные значения · 1×", 48, 936, 1326, 80,
+  button("maps:reset", "Сбросить карты · 1×", 48, 936, 636, 80,
     { icon: "reset", disabled: state.busy || !state.maps.length });
+  button("unload", "Выгрузить из комнаты", 708, 936, 666, 80,
+    { icon: "trash", danger: true, disabled: state.busy, modelId: model.id });
   label(state.busy ? "Дождитесь загрузки модели…" : "0 — без карты · 1 — исходный вид · B — закрыть · A — меню", 48, 1052, 25, { muted: true });
   return { controls, labels };
 }

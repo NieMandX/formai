@@ -1,10 +1,10 @@
 import * as T from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { createGallery } from "./gallery";
-import { makeDemo } from "./demos";
-import { disposeObject, loadModel } from "./loaders";
-import { installXR } from "./xr";
-import { clampScale } from "../model-utils";
+import { createGallery } from "./gallery.js";
+import { makeDemo } from "./demos.js";
+import { disposeObject, loadModel } from "./loaders.js";
+import { installXR } from "./xr.js";
+import { clampScale } from "../model-utils.js";
 import { refreshSkinnedBounds } from "./model-bounds.js";
 import { referenceById, referencePath } from "../reference-catalog.js";
 import { restoreReferenceEyeTransparency } from "./reference-materials.js";
@@ -171,7 +171,7 @@ export class Viewer {
     if (this.models.size >= 12) {
       disposeObject(root);
       throw new Error(
-        "В прототипе можно разместить до 12 моделей. Удалите одну из коллекции.",
+        "В комнате уже 12 моделей. Выгрузите одну через меню материалов (B).",
       );
     }
     root.updateMatrixWorld(true);
@@ -285,9 +285,8 @@ export class Viewer {
     }
     const reference = referenceById(id);
     if (reference) {
-      const previous = [...this.models.values()].filter((m) => m.reference);
-      if (this.models.size - previous.length >= 12)
-        throw new Error("В комнате уже 12 моделей. Уберите одну и выберите позу снова.");
+      if (this.models.size >= 12)
+        throw new Error("В комнате уже 12 моделей. Выгрузите одну через меню материалов (B).");
       this.catalogAbort = new AbortController();
       this.catalogLoad = { id, text: `Загружаем ${reference.name} · 0%` };
       this.emit();
@@ -314,10 +313,7 @@ export class Viewer {
           disposeObject(result.root);
           return;
         }
-        // Release the previous reference textures before the next GPU upload.
-        // Keep it visible until the download and parsing have succeeded.
-        for (const model of previous) this.remove(model.id);
-        this.remove("knot");
+        // Each reference stays in its own room slot until explicitly unloaded.
         const loaded = this.add(result, {
           id, name: reference.name, format: "GLB", reference: true,
         });

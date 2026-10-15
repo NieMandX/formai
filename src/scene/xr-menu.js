@@ -245,7 +245,7 @@ export class SpatialMenu {
       hit?.control?.id === c.id &&
       !hit.control.disabled
     )
-      this.activate(c.id);
+      this.activate(c.id, c.modelId);
   }
   cancel(pointer) {
     this.pressed.delete(pointer);
@@ -268,9 +268,15 @@ export class SpatialMenu {
     this.noticeUntil = this.elapsed + 5;
     this.sync();
   }
-  async activate(id) {
+  async activate(id, modelId) {
     const v = this.viewer;
-    if (id === "material:prev" || id === "material:next") {
+    if (id === "unload") {
+      if (this.busy || v.catalogLoad || !v.selected ||
+          (modelId && modelId !== v.selected.id)) return;
+      // Room-only action: keep imported files in IndexedDB and catalogue entries.
+      v.remove(v.selected.id);
+      this.close();
+    } else if (id === "material:prev" || id === "material:next") {
       if (v.catalogLoad) return;
       const entries = ["all", ...(v.selected?.materialControls || []).map(m => m.id)];
       const index = Math.max(0, entries.indexOf(this.materialTarget));

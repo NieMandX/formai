@@ -83,7 +83,7 @@ test("material unload works for models without maps and never calls persistent f
 
 test("VR catalogue marks every loaded reference, including unselected poses", () => {
   const [a, b] = REFERENCE_MODELS;
-  const state = { tab: "collection", page: 0, model: b, models: [a, b], settings: {} };
+  const state = { tab: "collection", collectionPath: "art/ariel", page: 0, model: b, models: [a, b], settings: {} };
   const { controls } = buildMenuLayout(state);
   assert.match(controls.find(c => c.id === "model:" + a.id).subtitle, /в комнате/);
   assert.match(controls.find(c => c.id === "model:" + b.id).subtitle, /выбрана/);

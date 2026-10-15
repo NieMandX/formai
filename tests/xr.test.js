@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as T from "three";
-import { REFERENCE_MODELS } from "../src/reference-catalog.js";
+
 import { SpatialMenu } from "../src/scene/xr-menu.js";
 import { makeRobot } from "../src/scene/demos.js";
 import { refreshSkinnedBounds } from "../src/scene/model-bounds.js";
@@ -123,11 +123,12 @@ test("paginated collection and clips retain access to all items", () => {
     format: "GLB",
   }));
   const ids = new Set();
-  for (let page = 0; page < Math.ceil((REFERENCE_MODELS.length + models.length + 3) / 4); page++)
+  for (let page = 0; page < Math.ceil(models.length / 4); page++)
     for (const c of buildMenuLayout({
       ...state,
       models,
       page,
+      collectionPath: "local",
       tab: "collection",
     }).controls)
       ids.add(c.id);
@@ -142,11 +143,11 @@ test("paginated collection and clips retain access to all items", () => {
   }
 });
 test("collection pagination moves immediately after removing models from the last page", async () => {
-  const oldPage = Math.ceil((REFERENCE_MODELS.length + 3 + 12) / 4) - 1;
-  const lastRemainingPage = Math.ceil((REFERENCE_MODELS.length + 3) / 4) - 1;
+  const oldPage = 2;
+  const lastRemainingPage = 1;
   const menu = {
     viewer: {}, page: oldPage, sync() {},
-    layout: buildMenuLayout({ ...state, tab: "collection", models: [], page: oldPage }),
+    layout: buildMenuLayout({ ...state, tab: "collection", collectionPath: "local", models: Array.from({ length: 5 }, (_, i) => ({ id: `m${i}`, name: `Model ${i}`, format: "GLB" })), page: oldPage }),
   };
   await SpatialMenu.prototype.activate.call(menu, "page:prev");
   assert.equal(menu.page, lastRemainingPage - 1);

@@ -2,13 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { REFERENCE_MODELS, referenceDetail } from "../src/reference-catalog.js";
+import { ART_FOLDERS } from "../src/library-catalog.js";
 import { buildMenuLayout } from "../src/scene/xr-menu-model.js";
 import { downloadModel } from "../src/scene/download.js";
 
 test("all source poses remain available while individual PBR assets are upgraded", () => {
   const state = { tab: "collection", models: [], model: null, settings: {}, page: 0 };
-  const controls = Array.from({ length: Math.ceil((REFERENCE_MODELS.length + 3) / 4) }, (_, page) => page)
-    .flatMap((page) => buildMenuLayout({ ...state, page }).controls);
+  const controls = ART_FOLDERS.flatMap(folder => Array.from({ length: Math.ceil(folder.models.length / 4) }, (_, page) =>
+    buildMenuLayout({ ...state, collectionPath: folder.id, page }).controls).flat());
   const sources = JSON.parse(readFileSync(new URL('../scripts/reference-sources.json', import.meta.url))).models;
   assert.equal(REFERENCE_MODELS.length, 43);
   assert.deepEqual(new Set(REFERENCE_MODELS.map((m) => m.id)), new Set(sources.map(m => 'reference-' + m.file.replace('-pose-', '-').replace('.glb', ''))));
@@ -27,9 +28,9 @@ test("all source poses remain available while individual PBR assets are upgraded
   }
   for (const bytes of sites.values()) assert.ok(bytes <= 850 * 1024 ** 2);
   const loaded = { ...REFERENCE_MODELS[0], format: "GLB", reference: true };
-  const withLoaded = buildMenuLayout({ ...state, models: [loaded], model: loaded });
+  const withLoaded = buildMenuLayout({ ...state, collectionPath: "art/ariel", models: [loaded], model: loaded });
   assert.equal(withLoaded.controls.filter((c) => c.id === `model:${loaded.id}`).length, 1);
-  const busy = buildMenuLayout({ ...state, busy: true });
+  const busy = buildMenuLayout({ ...state, collectionPath: "art/ariel", busy: true });
   assert.ok(busy.controls.filter((c) => c.id.startsWith("model:")).every((c) => c.disabled));
 });
 

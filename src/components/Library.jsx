@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   Plus,
   FolderOpen,
@@ -8,9 +8,11 @@ import {
   Layers3,
   PersonStanding,
   CircleHelp,
+  ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
-import { DEMOS } from "../scene/demos";
-import { REFERENCE_MODELS, referenceDetail } from "../reference-catalog.js";
+import { REFERENCE_MODELS } from "../reference-catalog.js";
+import { catalogView, personalModels } from "../library-catalog.js";
 const marks = { knot: Layers3, architecture: Box, robot: PersonStanding };
 export function Library({
   models,
@@ -25,17 +27,9 @@ export function Library({
 }) {
   const input = useRef(),
     folder = useRef();
-  const ids = new Set([...DEMOS, ...REFERENCE_MODELS].map((d) => d.id)),
-    rows = [
-      ...REFERENCE_MODELS.map((model) => ({ ...model, reference: true, subtitle: referenceDetail(model) })),
-      ...DEMOS,
-      ...models
-        .filter((m) => !ids.has(m.id))
-        .map((m) => ({
-          ...m,
-          subtitle: `${m.format} · ${m.animations ? `${m.animations} анимации` : "3D-модель"}`,
-        })),
-    ];
+  const [path, setPath] = useState("");
+  const view = catalogView(path, models), ownModels = personalModels(models);
+  const loadedIds = new Set(models.map(m => m.id));
   return (
     <aside className="library panel" aria-label="Коллекция моделей">
       <div className="panel-heading">
@@ -84,10 +78,31 @@ export function Library({
           По ссылке
         </button>
       </div>
-      <div className="model-list">
-        {rows.map((row) => {
+      <nav className="catalog-breadcrumbs" aria-label="Путь в каталоге">
+        {view.breadcrumbs.map((crumb, i) => (
+          <span key={crumb.id}>
+            {i > 0 && <ChevronRight size={12} aria-hidden="true" />}
+            {i === view.breadcrumbs.length - 1 ? (
+              <strong aria-current="page">{crumb.name}</strong>
+            ) : <button onClick={() => setPath(crumb.id)}>{crumb.name}</button>}
+          </span>
+        ))}
+      </nav>
+      {view.parent !== null && <button className="catalog-back" onClick={() => setPath(view.parent)}>
+        <ArrowLeft size={15} />{view.parent === "art" ? "Назад в Art" : "Все папки"}
+      </button>}
+      <div className="model-list" aria-label={view.name}>
+        {view.entries.map((row) => {
+          if (row.folder) return (
+            <button className={`catalog-folder ${row.parent ? "source-folder" : ""}`} key={row.id}
+              onClick={() => setPath(row.id)} aria-label={`Открыть папку ${row.name}`}>
+              <span className="folder-mark"><FolderOpen size={25} strokeWidth={1.4} /></span>
+              <span className="folder-info"><strong>{row.name}</strong><small>{row.subtitle}</small></span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
+          );
           const Mark = marks[row.id] || (row.reference ? PersonStanding : Box),
-            loaded = models.some((m) => m.id === row.id);
+            loaded = loadedIds.has(row.id);
           return (
             <div
               className={`model-row ${selected === row.id ? "selected" : ""}`}
@@ -123,7 +138,11 @@ export function Library({
             </div>
           );
         })}
+        {view.path === "local" && !view.entries.length && <p className="catalog-empty">Сейчас своих моделей в комнате нет. Добавьте файл или откройте его по ссылке.</p>}
       </div>
+      {!view.path && ownModels.length > 0 && <button className="catalog-personal" onClick={() => setPath("local")}>
+        <Box size={16} /><span>Свои модели <small>{ownModels.length}</small></span><ChevronRight size={15} />
+      </button>}
       <div className="local-note">
         <FolderOpen size={19} />
         <span>Поз в каталоге: {REFERENCE_MODELS.length}</span>

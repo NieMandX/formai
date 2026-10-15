@@ -369,14 +369,14 @@ export const REFERENCE_MODELS = [
     "id": "reference-nat18-97",
     "name": "Nat I · поза 97",
     "file": "nat18-pose-97-uastc.glb",
-    "bytes": 55479740,
+    "bytes": 118005852,
     "triangles": 153138,
-    "sha256": "047dce17f0c96337735933971eaabba08baf54631300eef00a1579bc6ece2fd4",
+    "sha256": "38bc07122e5338ed9785554492492cb39cadbf3e9038d3bc7108d52d51f07223",
     "textureSize": 8192,
-    "release": "reference-models-uastc-v2",
-    "materialVersion": 0,
+    "release": "reference-models-pbr-preview-v1",
+    "materialVersion": 1,
     "textureEncoding": "KTX2 UASTC",
-    "site": "formai"
+    "site": "formai-library-2"
   },
   {
     "id": "reference-nat18-106",

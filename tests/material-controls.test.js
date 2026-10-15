@@ -65,6 +65,17 @@ test("displacement strength includes source bias and native materials without ma
   assert.match(compile(m).vertexShader, /displacementBias \* fmMapGain0/);
   assert.equal(materialControlState(createMaterialControls(scene([new T.MeshStandardMaterial()]))).maps.length, 0);
 });
+test("detail-only source maps keep GLSL preprocessor directives on separate lines", () => {
+  const m = new T.MeshStandardMaterial({ map: new T.Texture() });
+  m.userData.formaiMaterial = { version: 1, kind: "detail", maps: { _microTex1: 0 } };
+  m.formaiMap_microTex1 = new T.Texture();
+  configureSourceMaterial(m, { _microTex1: m.formaiMap_microTex1 });
+  createMaterialControls(scene([m]));
+  const shader = compile(m);
+  for (const stage of ["fragmentShader", "vertexShader"])
+    assert.ok(!/[^\s]#/.test(shader[stage]), "every directive must begin its own line");
+  assert.match(shader.fragmentShader, /vec4\(0.5, 0.5, 0.5, 1.0\)/, "detail colour disables to a neutral multiplier");
+});
 test("material pages expose every available map with 0–10 sliders and safe hit targets", () => {
   const state = { model: { id: "a", name: "Nat" }, materialTarget: "all", materials: [{ id: "0", name: "Skin" }], maps: Array.from({length: 11}, (_,i) => ({ id: String(i), label: "Map "+i, value: 1 })) };
   const ids = new Set();

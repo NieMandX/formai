@@ -1,23 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { REFERENCE_MODELS, referenceDetail } from "../src/reference-catalog.js";
 import { buildMenuLayout } from "../src/scene/xr-menu-model.js";
 import { downloadModel } from "../src/scene/download.js";
 
-test("three KTX2 PBR test models retain source resolution and are selectable in VR", () => {
+test("all source poses remain available while individual PBR assets are upgraded", () => {
   const state = { tab: "collection", models: [], model: null, settings: {}, page: 0 };
-  const controls = [0, 1, 2].flatMap((page) => buildMenuLayout({ ...state, page }).controls);
-  assert.equal(REFERENCE_MODELS.length, 3);
-  assert.deepEqual(new Set(REFERENCE_MODELS.map((m) => m.id)), new Set(["reference-ariel-45", "reference-chloe-01", "reference-nat18-53"]));
+  const controls = Array.from({ length: Math.ceil((REFERENCE_MODELS.length + 3) / 4) }, (_, page) => page)
+    .flatMap((page) => buildMenuLayout({ ...state, page }).controls);
+  const sources = JSON.parse(readFileSync(new URL('../scripts/reference-sources.json', import.meta.url))).models;
+  assert.equal(REFERENCE_MODELS.length, 43);
+  assert.deepEqual(new Set(REFERENCE_MODELS.map((m) => m.id)), new Set(sources.map(m => 'reference-' + m.file.replace('-pose-', '-').replace('.glb', ''))));
+  const sites = new Map();
   for (const model of REFERENCE_MODELS) {
-    assert.equal(model.textureSize, model.id === "reference-nat18-53" ? 4096 : 8192);
-    assert.equal(model.materialVersion, 1);
-    assert.match(model.file, /-uastc\.glb$/);
+    assert.ok([4096, 8192].includes(model.textureSize));
+    assert.ok([0, 1].includes(model.materialVersion));
+    assert.match(model.file, /^[a-z0-9-]+\.glb$/);
+    assert.ok(['reference-sources-v2', 'reference-models-uastc-v2', 'reference-models-pbr-preview-v1'].includes(model.release));
+    if (model.materialVersion === 1) assert.equal(model.release, 'reference-models-pbr-preview-v1');
     assert.ok(referenceDetail(model).startsWith(`${model.textureSize / 1024}K`));
     assert.match(model.sha256, /^[a-f0-9]{64}$/);
-    assert.ok(model.bytes < 100 * 1024 * 1024);
+    assert.ok(model.bytes < 250 * 1024 * 1024);
+    sites.set(model.site, (sites.get(model.site) || 0) + model.bytes);
     assert.ok(controls.some((c) => c.id === `model:${model.id}` && !c.disabled));
   }
+  for (const bytes of sites.values()) assert.ok(bytes <= 850 * 1024 ** 2);
   const loaded = { ...REFERENCE_MODELS[0], format: "GLB", reference: true };
   const withLoaded = buildMenuLayout({ ...state, models: [loaded], model: loaded });
   assert.equal(withLoaded.controls.filter((c) => c.id === `model:${loaded.id}`).length, 1);

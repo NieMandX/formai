@@ -16,6 +16,7 @@ import {
   validTeleport,
   moveSmooth,
   turnSmooth,
+  scaleSmooth,
   buttonEdge,
 } from "../src/scene/xr-math.js";
 const model = {
@@ -308,4 +309,35 @@ test("turning keeps the physically offset head in place and stops immediately", 
   assert.equal(rig.rotation.y, stopped);
   turnSmooth(rig, camera, 1, 5);
   assert.ok(Math.abs(rig.rotation.y - stopped + Math.PI / 40) < 1e-8);
+});
+
+test("thumbstick scaling is proportional, frame-rate independent and reversible without moving the model", () => {
+  const run = (fps, axis) => {
+    const object = new T.Object3D();
+    object.position.set(1, 0.28, -2);
+    for (let i = 0; i < fps; i++) scaleSmooth(object, axis, 1 / fps);
+    assert.deepEqual(object.position.toArray(), [1, 0.28, -2]);
+    return object;
+  };
+  assert.ok(Math.abs(run(72, -1).scale.x - 2) < 1e-8);
+  assert.ok(Math.abs(run(120, -1).scale.x - run(72, -1).scale.x) < 1e-8);
+  assert.ok(Math.abs(run(90, -0.59).scale.x - Math.sqrt(2)) < 1e-8);
+  const object = run(90, -1);
+  for (let i = 0; i < 90; i++) scaleSmooth(object, 1, 1 / 90);
+  assert.ok(Math.abs(object.scale.x - 1) < 1e-8);
+  for (const axis of [0, 0.18, -0.1, NaN]) assert.equal(scaleSmooth(object, axis, 1 / 90), false);
+  assert.deepEqual(object.scale.toArray(), [object.scale.x, object.scale.x, object.scale.x]);
+});
+
+test("thumbstick scaling respects size limits and bounds delayed frames", () => {
+  const object = new T.Object3D();
+  scaleSmooth(object, -1, 5);
+  assert.ok(Math.abs(object.scale.x - Math.pow(2, 0.05)) < 1e-8);
+  object.scale.setScalar(10);
+  assert.equal(scaleSmooth(object, -1, 1 / 90), false);
+  assert.equal(object.scale.x, 10);
+  object.scale.setScalar(0.05);
+  assert.equal(scaleSmooth(object, 1, 1 / 90), false);
+  assert.equal(object.scale.x, 0.05);
+  assert.equal(scaleSmooth(null, -1, 1 / 90), false);
 });

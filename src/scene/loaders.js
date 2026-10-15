@@ -124,7 +124,7 @@ async function parser(ext, data, path, manager, renderer, cleanups) {
   return { root: new THREE.Mesh(geometry, material), clips: [] };
 }
 
-export async function loadModel({ files, main, url, signal, onProgress, expectedBytes }, renderer) {
+export async function loadModel({ files, main, url, signal, onProgress, expectedBytes, maxBytes }, renderer) {
   const manager = new THREE.LoadingManager();
   const urls = [],
     cleanups = [],
@@ -187,7 +187,7 @@ export async function loadModel({ files, main, url, signal, onProgress, expected
       ext = extension(file.name);
     } else {
       const parsed = validateModelURL(url);
-      data = await downloadModel(parsed.href, { signal, onProgress, expectedBytes });
+      data = await downloadModel(parsed.href, { signal, onProgress, expectedBytes, maxBytes });
       ext = extension(parsed.pathname);
       path = new URL(".", parsed).href;
     }

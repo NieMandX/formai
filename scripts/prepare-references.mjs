@@ -17,8 +17,11 @@ export async function prepareReferences() {
     const cached = await readFile(target).catch(() => null);
     if (cached && valid(cached, model)) return;
     console.log(`Downloading reference: ${model.file}`);
+    const release = model.release || REFERENCE_RELEASE;
+    if (!["reference-sources-v2", "reference-models-uastc-v2", "reference-models-pbr-preview-v1"].includes(release))
+      throw new Error("Unexpected reference release");
     const response = await fetch(
-      `https://github.com/NieMandX/formai/releases/download/${REFERENCE_RELEASE}/${model.file}`,
+      `https://github.com/NieMandX/formai/releases/download/${release}/${model.file}`,
       { signal: AbortSignal.timeout(180000) },
     );
     if (!response.ok) throw new Error(`${model.file}: HTTP ${response.status}`);

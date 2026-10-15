@@ -7,6 +7,7 @@ const nativeMaps = {
   _SpecTex: "specularColorMap", _velvetMask: "sheenColorMap",
 };
 const colorSlots = new Set(["_SpecTex", "_WetSpecTex", "_SSSColor", "_velvetMask"]);
+const sourceNormalScales = new WeakMap();
 
 export async function hydrateSourceMaterials(result, renderer) {
   const materials = new Set();
@@ -41,6 +42,12 @@ export function configureSourceMaterial(material, maps) {
   const { kind, floats: f = {}, colors: c = {} } = data;
   const number = (key, fallback) => Number.isFinite(f[key]) ? f[key] : fallback;
   const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+  if (kind === "skin") {
+    // Retain the loader's tangent-space handedness and avoid applying the gain
+    // twice when a material is shared or configured again.
+    if (!sourceNormalScales.has(material)) sourceNormalScales.set(material, material.normalScale.clone());
+    material.normalScale.copy(sourceNormalScales.get(material)).multiplyScalar(0.4);
+  }
   if (kind === "cornea") {
     // Original corneas use premultiplied-style additive reflections over zero
     // alpha. Do not enable premultipliedAlpha: that would erase those reflections.
@@ -76,7 +83,7 @@ export function configureSourceMaterial(material, maps) {
   const sample = (slot, uv = "vMapUv") => names[slot] ? `texture2D(${names[slot]}, ${uv})` : "vec4(1.0)";
   const customDeclarations = Object.keys(maps).filter((slot) => !nativeMaps[slot])
     .map((slot) => `uniform sampler2D ${names[slot]};`).join("\n");
-  material.customProgramCacheKey = () => `formai-pbr-v1:${kind}:${Object.keys(maps).sort().join(",")}`;
+  material.customProgramCacheKey = () => `formai-pbr-v2:${kind}:${Object.keys(maps).sort().join(",")}`;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     let declarations = `${customDeclarations}
@@ -120,7 +127,9 @@ export function configureSourceMaterial(material, maps) {
           mapN.xy *= normalScale;
           vec4 fmMicroN = fmMicro(vMapUv);
           float fmMicroFade = 1.0 - smoothstep(fmFadeDistance, fmFadeDistance * 3.0, length(vViewPosition));
-          mapN = normalize(vec3(mapN.xy + fmMicroN.xy * fmMicroFade * 0.35, mapN.z));
+          // Preserve the scan's large-scale normal map; tiled pore detail should
+          // remain subtle even when source Unity strengths reach 3x.
+          mapN = normalize(vec3(mapN.xy + fmMicroN.xy * fmMicroFade * 0.08, mapN.z));
         `));
       shader.fragmentShader = shader.fragmentShader.replace("#include <lights_physical_fragment>",
         THREE.ShaderChunk.lights_physical_fragment.replace(
@@ -151,7 +160,7 @@ export function configureSourceMaterial(material, maps) {
       shader.fragmentShader = shader.fragmentShader.replace("#include <lights_fragment_end>", `
         #include <lights_fragment_end>
         float fmCavityFactor = mix(1.0, ${sample("_OcclusionTex")}.g, fmCavity);
-        fmCavityFactor *= mix(1.0, fmMicro(vMapUv).a, 0.15 * fmMicroFade);
+        fmCavityFactor *= mix(1.0, fmMicro(vMapUv).a, 0.05 * fmMicroFade);
         reflectedLight.indirectDiffuse *= fmCavityFactor;
         reflectedLight.directDiffuse *= mix(1.0, fmCavityFactor, 0.3);
       `);

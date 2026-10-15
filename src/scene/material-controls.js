@@ -95,7 +95,7 @@ function installGains(material, controls) {
         if (sampler === "displacementMap")
           code = code.replace("+ displacementBias", `+ displacementBias * ${name}`);
       }
-      shader[stage] = declarations + code + definitions;
+      shader[stage] = declarations + "\n" + code + "\n" + definitions;
     }
   };
   material.customProgramCacheKey = () => cacheKey + ":formai-map-gains-v1:" +

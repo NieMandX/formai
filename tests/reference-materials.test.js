@@ -46,3 +46,15 @@ test("actual eye textures, other meshes and unreadable imports are left intact",
     assert.ok(root.children.every((mesh) => mesh.castShadow), mode);
   }
 });
+
+test("KTX2 corneas retain transparency without attempting GPU texture readback", () => {
+  const { root, material } = fixture();
+  material.map = new T.CompressedTexture([], 256, 256);
+  material.transparent = true;
+  material.userData.formaiTransparentEyeOverlay = true;
+  assert.equal(restoreReferenceEyeTransparency(root, () => {
+    assert.fail("Compressed eye textures must not be drawn on a canvas");
+  }), 2);
+  assert.equal(material.depthWrite, false);
+  assert.ok(root.children.every((mesh) => !mesh.castShadow));
+});

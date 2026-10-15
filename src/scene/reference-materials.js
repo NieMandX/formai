@@ -10,8 +10,10 @@ export function restoreReferenceEyeTransparency(root, readPixels = texturePixels
     if (!material?.isMeshStandardMaterial || material.name !== "Eyes") return;
     if (!inspected.has(material)) {
       const image = material.map?.image;
-      let empty = false;
-      if (image?.width === 256 && image.height === 256) {
+      // New KTX2 assets declare the original transparent surface in GLB extras.
+      // Compressed GPU textures cannot be inspected through a 2D canvas.
+      let empty = material.userData.formaiTransparentEyeOverlay === true;
+      if (!empty && !material.map?.isCompressedTexture && image?.width === 256 && image.height === 256) {
         try {
           const pixels = readPixels(image);
           empty = pixels.length === 256 * 256 * 4 && pixels.every((value) => value === 0);

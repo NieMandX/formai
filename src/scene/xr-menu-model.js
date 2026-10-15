@@ -1,5 +1,6 @@
 // Pixel-space layout shared by the spatial renderer and interaction tests.
-import { REFERENCE_MODELS, referenceById, referenceDetail } from "../reference-catalog.js";
+import { REFERENCE_MODELS } from "../reference-catalog.js";
+import { catalogView, personalModels } from "../library-catalog.js";
 export const MENU = {
   width: 1440,
   height: 1080,
@@ -11,11 +12,6 @@ export const TABS = [
   ["object", "Объект", "sliders"],
   ["animation", "Анимация", "play"],
   ["scene", "Сцена", "sun"],
-];
-export const DEMOS = [
-  { id: "knot", name: "Узел", detail: "Форма и PBR-материал" },
-  { id: "architecture", name: "Архитектура", detail: "Свет и пространство" },
-  { id: "robot", name: "Робот", detail: "11 костей · 3 анимации" },
 ];
 export const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 export function hitControl(controls, x, y) {
@@ -154,30 +150,31 @@ export function buildMenuLayout(state) {
     };
   }
   if (state.tab === "collection") {
-    const entries = [
-      ...REFERENCE_MODELS.map((entry) => ({ ...entry, reference: true })),
-      ...state.models.filter((m) => !referenceById(m.id)),
-      ...DEMOS.filter((d) => !state.models.some((m) => m.id === d.id)).map(
-        (d) => ({ ...d, demo: true }),
-      ),
-    ];
+    const view = catalogView(state.collectionPath, state.models),
+      entries = view.entries,
+      ownModels = personalModels(state.models);
+    if (view.parent !== null) {
+      button("folder:" + view.parent, view.parent === "art" ? "Назад в Art" : "Все папки", 316, 180, 270, 80, { icon: "left" });
+      label(view.breadcrumbs.slice(1).map(c => c.name).join(" / "), 612, 229, 25, { maxWidth: 748, muted: true });
+    } else {
+      label("Каталог · 2 папки", 318, 229, 27, { muted: true });
+      if (ownModels.length) button("folder:local", `Свои модели · ${ownModels.length}`, 1000, 180, 360, 80, { icon: "box" });
+    }
     const pages = Math.max(1, Math.ceil(entries.length / 4)),
       page = clamp(state.page, 0, pages - 1);
     entries.slice(page * 4, page * 4 + 4).forEach((entry, i) => {
-      button("model:" + entry.id, entry.name, 316, 204 + i * 142, 1044, 118, {
-        modelId: entry.id,
-        active: model?.id === entry.id,
-        icon: "box",
-        thumb: entry.id,
-        subtitle: entry.reference
-          ? referenceDetail(entry) + (model?.id === entry.id ? " · выбрана" : state.models.some(m => m.id === entry.id) ? " · в комнате" : "")
-          : entry.demo
-          ? "Добавить пример · " + entry.detail
-          : `${entry.format} · ${entry.animations || 0} анимаций${model?.id === entry.id ? " · выбрана" : ""}`,
-        disabled: state.busy,
+      const loaded = state.models.some(m => m.id === entry.id);
+      button((entry.folder ? "folder:" : "model:") + entry.id, entry.name, 316, 282 + i * 122, 1044, 108, {
+        modelId: entry.folder ? undefined : entry.id,
+        active: !entry.folder && model?.id === entry.id,
+        icon: entry.folder ? "folder" : "box",
+        thumb: entry.folder ? undefined : entry.id,
+        subtitle: entry.subtitle + (entry.folder ? "" : model?.id === entry.id ? " · выбрана" : loaded ? " · в комнате" : " · добавить"),
+        disabled: !entry.folder && state.busy,
       });
     });
-    button("page:prev", "Назад", 316, 808, 242, 96, {
+    if (!entries.length) label("Своих моделей в комнате нет", 342, 354, 30, { muted: true });
+    button("page:prev", "Ранее", 316, 808, 242, 96, {
       targetPage: Math.max(0, page - 1),
       disabled: page === 0 || state.busy,
       icon: "left",

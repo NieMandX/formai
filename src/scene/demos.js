@@ -1,16 +1,7 @@
 import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
-export const DEMOS = [
-  { id: "knot", name: "Узел", subtitle: "Форма и материал", format: "DEMO" },
-  {
-    id: "architecture",
-    name: "Архитектура",
-    subtitle: "Свет и пространство",
-    format: "DEMO",
-  },
-  { id: "robot", name: "Робот", subtitle: "Скелетная анимация", format: "GLB" },
-];
+export { DEMO_MODELS as DEMOS } from "../library-catalog.js";
 export function makeDemo(id) {
   if (id === "robot") return makeRobot();
   const root = new T.Group();

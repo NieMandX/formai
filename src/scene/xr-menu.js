@@ -7,6 +7,7 @@ import {
   clamp,
 } from "./xr-menu-model.js";
 import { buildMaterialMenuLayout } from "./xr-material-menu.js";
+import { catalogView } from "../library-catalog.js";
 import { materialControlState } from "./material-controls.js";
 
 const C = {
@@ -32,6 +33,7 @@ export class SpatialMenu {
     this.materialPage = 0;
     this.materialModelId = null;
     this.page = 0;
+    this.collectionPath = "";
     this.clipPage = 0;
     this.confirm = null;
     this.busy = false;
@@ -123,6 +125,7 @@ export class SpatialMenu {
       mode: this.mode,
       tab: this.tab,
       page: this.page,
+      collectionPath: this.collectionPath,
       clipPage: this.clipPage,
       confirm: this.confirm,
       busy: this.busy || !!this.viewer.catalogLoad,
@@ -312,6 +315,11 @@ export class SpatialMenu {
           this.toast("Не удалось удалить сохранённую копию");
         }
       }
+    } else if (id.startsWith("folder:")) {
+      this.collectionPath = catalogView(id.slice(7)).path;
+      this.page = 0;
+      this.pressed.clear();
+      this.hover.clear();
     } else if (id.startsWith("model:")) {
       if (this.busy || v.catalogLoad) return;
       const modelId = id.slice(6);
@@ -419,6 +427,11 @@ export class SpatialMenu {
       c.moveTo(a, b);
       c.lineTo(d, e);
     };
+    if (name === "folder") {
+      c.moveTo(3, 5); c.lineTo(9, 5); c.lineTo(12, 8);
+      c.lineTo(21, 8); c.lineTo(21, 20); c.lineTo(3, 20); c.closePath();
+      line(3, 10, 21, 10);
+    }
     if (name === "box") {
       c.moveTo(12, 2);
       c.lineTo(22, 7);
@@ -613,7 +626,8 @@ export class SpatialMenu {
           this.icon(b.icon, b.x + (b.w - 36) / 2, b.y + (b.h - 36) / 2, 36, fg);
         else {
           if (b.thumb && this.thumbs[b.thumb]) {
-            c.drawImage(this.thumbs[b.thumb], b.x + 16, b.y + 15, 88, 88);
+            const size = Math.min(88, b.h - 24);
+            c.drawImage(this.thumbs[b.thumb], b.x + 16, b.y + (b.h - size) / 2, size, size);
             tx = b.x + 128;
           } else if (b.icon) {
             const size = b.sidebar ? 26 : 32;

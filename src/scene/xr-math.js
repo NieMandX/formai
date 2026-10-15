@@ -52,6 +52,19 @@ function analogAmount(axis, dt) {
   return Math.sign(axis) * (Math.min(1, Math.abs(axis)) - deadzone) / (1 - deadzone);
 }
 
+// Exponential scaling feels consistent at every model size. Full forward doubles
+// the size in one second; returning to centre stops immediately.
+export function scaleSmooth(object, axis, dt) {
+  const amount = analogAmount(axis, dt);
+  if (!object || !amount) return false;
+  const before = object.scale.x;
+  const scale = clampScale(before * Math.exp(-amount * Math.LN2 * Math.min(dt, 0.05)));
+  if (scale === before) return false;
+  object.scale.setScalar(scale);
+  object.updateMatrixWorld(true);
+  return true;
+}
+
 export function turnSmooth(rig, camera, axis, dt) {
   const amount = analogAmount(axis, dt);
   if (!amount) return false;

@@ -296,6 +296,7 @@ export class Viewer {
         result = await loadModel({
           url: address.href,
           expectedBytes: reference.bytes,
+          maxBytes: 250 * 1024 ** 2,
           signal: this.catalogAbort.signal,
           onProgress: (fraction) => {
             const text = fraction === 1

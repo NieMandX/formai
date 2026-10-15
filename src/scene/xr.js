@@ -1,7 +1,7 @@
 import * as T from "three";
 import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 import { SpatialMenu } from "./xr-menu.js";
-import { applyTwoHandTransform, validTeleport, moveSmooth, turnSmooth, buttonEdge } from "./xr-math.js";
+import { applyTwoHandTransform, validTeleport, moveSmooth, turnSmooth, scaleSmooth, buttonEdge } from "./xr-math.js";
 
 export function installXR(viewer) {
   const { renderer, scene, rig } = viewer;
@@ -15,7 +15,9 @@ export function installXR(viewer) {
     disposed = false,
     focused = true;
   let selectionElapsed = 0,
-    selectionId = null;
+    selectionId = null,
+    thumbScaling = false,
+    scaleEmitElapsed = 0;
   // The application's camera has the rig transform; the raw XR camera is in reference space before render.
   const head = () => viewer.camera;
   const notify = (text) => menu.toast(text);
@@ -54,10 +56,12 @@ export function installXR(viewer) {
       c.teleportTarget = null;
       c.selectedOnPress = null;
       c.menuPress = false;
+      c.squeezed = false;
       c.dot.visible = false;
       c.beam.visible = false;
     }
     marker.visible = false;
+    thumbScaling = false;
   }
   function teleportTo(point) {
     const p = head().getWorldPosition(new T.Vector3());
@@ -231,6 +235,7 @@ export function installXR(viewer) {
       recenterButton: false,
       teleporting: false,
       teleportTarget: null,
+      squeezed: false,
     };
     controls.push(c);
     const connected = (e) => {
@@ -240,6 +245,7 @@ export function installXR(viewer) {
     };
     const disconnected = () => {
       c.input = null;
+      c.squeezed = false;
       grips.delete(c);
       capture();
       menu.cancel(c.index);
@@ -253,8 +259,12 @@ export function installXR(viewer) {
     c.listeners = {
       connected,
       disconnected,
-      squeezestart: () => startGrip(c),
+      squeezestart: () => {
+        c.squeezed = true;
+        startGrip(c);
+      },
       squeezeend: () => {
+        c.squeezed = false;
         grips.delete(c);
         capture();
       },
@@ -315,7 +325,7 @@ export function installXR(viewer) {
     menu,
     controls,
     cancelGrab,
-    isManipulating: () => grips.size > 0,
+    isManipulating: () => grips.size > 0 || thumbScaling,
     update(dt) {
       if (disposed || !renderer.xr.isPresenting) return;
       rig.updateMatrixWorld(true);
@@ -352,7 +362,9 @@ export function installXR(viewer) {
         selectionId = selected.id;
       }
       marker.visible = false;
-      let movementAxis = 0, turningAxis = 0, teleported = false;
+      const gripModifier = controls.some((c) => c.input?.handedness === "right" && c.ray.visible
+        && (c.squeezed || c.input.gamepad?.buttons[1]?.pressed));
+      let movementAxis = 0, turningAxis = 0, scalingAxis = 0, teleported = false;
       for (const c of controls) {
         const input = c.input;
         if (!input || input.hand || !c.ray.visible) {
@@ -398,11 +410,14 @@ export function installXR(viewer) {
           x = axes[2] || 0,
           y = axes[3] || 0;
         if (input.handedness === "right") {
-          movementAxis = y;
-          turningAxis = x;
+          if (gripModifier) scalingAxis = y;
+          else {
+            movementAxis = y;
+            turningAxis = x;
+          }
         }
         if (input.handedness === "left") {
-          const aiming = y < -0.65 && !grips.size && !c.menuPress && !hit;
+          const aiming = y < -0.65 && !gripModifier && !grips.size && !c.menuPress && !hit;
           if (aiming) {
             c.teleporting = true;
             const floor = cast(c).intersectObject(viewer.gallery.floor)[0];
@@ -423,7 +438,7 @@ export function installXR(viewer) {
               c.beam.scale.z = floor.distance;
             }
           } else if (c.teleporting) {
-            if (Math.abs(y) < 0.3 && c.teleportTarget && !grips.size && !hit) {
+            if (Math.abs(y) < 0.3 && c.teleportTarget && !gripModifier && !grips.size && !hit) {
               teleportTo(c.teleportTarget);
               teleported = true;
               menu.close();
@@ -434,7 +449,21 @@ export function installXR(viewer) {
           }
         }
       }
-      if (!grips.size && !teleported && !controls.some((c) => c.menuPress || c.teleporting)) {
+      const blocked = controls.some((c) => c.menuPress || c.teleporting);
+      const scaled = gripModifier && !blocked && !menu.confirm && !menu.busy && !viewer.catalogLoad
+        && scaleSmooth(selected?.wrapper, scalingAxis, dt);
+      if (scaled) {
+        // Rebase the held transform so dragging on the next frame cannot restore
+        // the old size. The same rule handles transition to a two-hand gesture.
+        if (grips.size) capture();
+        scaleEmitElapsed += dt;
+        if (scaleEmitElapsed > 0.1) { viewer.emit(); scaleEmitElapsed = 0; }
+      } else if (thumbScaling) {
+        viewer.emit();
+        scaleEmitElapsed = 0;
+      }
+      thumbScaling = !!scaled;
+      if (!gripModifier && !grips.size && !teleported && !blocked) {
         if (turnSmooth(rig, head(), turningAxis, dt)) renderer.xr.updateCamera(viewer.camera);
         moveSmooth(rig, head(), movementAxis, dt, viewer.models.values(), viewer.gallery.plinth);
         rig.updateMatrixWorld(true);

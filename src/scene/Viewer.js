@@ -9,6 +9,7 @@ import { refreshSkinnedBounds } from "./model-bounds.js";
 import { referenceById, referencePath } from "../reference-catalog.js";
 import { restoreReferenceEyeTransparency } from "./reference-materials.js";
 import { createMaterialControls, setMapGain, resetMapGains } from "./material-controls.js";
+import { ARWorkspace } from "./ar-workspace.js";
 
 export class Viewer {
   constructor(element, onChange) {
@@ -20,6 +21,8 @@ export class Viewer {
     this.catalogLoad = null;
     this.catalogAbort = null;
     this.autoRotate = false;
+    this.xrMode = null;
+    this.xrStarting = false;
     this.settings = {
       grid: true,
       autoRotate: false,
@@ -35,7 +38,7 @@ export class Viewer {
     this.scene.add(this.rig);
     this.renderer = new T.WebGLRenderer({
       antialias: true,
-      alpha: false,
+      alpha: true,
       powerPreference: "high-performance",
     });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
@@ -61,6 +64,7 @@ export class Viewer {
     this.orbit.update();
     this.gallery = createGallery(this.scene, this.renderer);
     this.thumbnails = this.makeThumbnails();
+    this.ar = new ARWorkspace(this);
     this.xr = installXR(this);
     this.resize = () => {
       if (this.renderer.xr.isPresenting) return;
@@ -78,7 +82,7 @@ export class Viewer {
     };
     this.pointerUp = (e) => {
       if (
-        !this.pointerStart ||
+        this.renderer.xr.isPresenting || !this.pointerStart ||
         Math.hypot(
           e.clientX - this.pointerStart[0],
           e.clientY - this.pointerStart[1],
@@ -110,20 +114,24 @@ export class Viewer {
     this.renderer.setAnimationLoop((time) => {
       const dt = last ? Math.min((time - last) / 1000, 0.05) : 0;
       last = time;
-      for (const m of this.models.values()) {
-        if (m.playing) m.mixer?.update(dt * m.speed);
-        if (m.bones && m.playing && time - (m.boundsAt || 0) > 100) {
-          refreshSkinnedBounds(m.wrapper);
-          m.boundsAt = time;
-        }
-      }
-      if (this.autoRotate && this.selected && !this.xr.isManipulating())
-        this.selected.wrapper.rotation.y += dt * 0.25;
+      this.updateModels(dt, time);
       this.xr.update(dt);
       if (!this.renderer.xr.isPresenting) this.orbit.update();
       this.renderer.render(this.scene, this.camera);
     });
     this.add(makeDemo("knot"), { id: "knot", name: "Узел", format: "DEMO" });
+  }
+  updateModels(dt, time) {
+    if (this.ar?.drawing) return;
+    for (const m of this.models.values()) {
+      if (m.playing) m.mixer?.update(dt * m.speed);
+      if (m.bones && m.playing && time - (m.boundsAt || 0) > 100) {
+        refreshSkinnedBounds(m.wrapper);
+        m.boundsAt = time;
+      }
+    }
+    if (this.autoRotate && this.selected && !this.xr.isManipulating())
+      this.selected.wrapper.rotation.y += dt * 0.25;
   }
   makeThumbnails() {
     const results = {},
@@ -273,6 +281,7 @@ export class Viewer {
     this.models.set(meta.id, model);
     if (bones) refreshSkinnedBounds(wrapper);
     if (clips.length) model.action = model.mixer.clipAction(clips[0]).play();
+    this.ar?.add(model);
     this.select(meta.id);
     return model;
   }
@@ -283,6 +292,7 @@ export class Viewer {
       this.focus();
       return;
     }
+    if (this.ar?.drawing) throw new Error("Снимите фиксацию во вкладке «Рисование», чтобы добавить модель.");
     const reference = referenceById(id);
     if (reference) {
       if (this.models.size >= 12)
@@ -355,7 +365,7 @@ export class Viewer {
       );
   }
   setScale(value, emit = true) {
-    if (!this.selected) return;
+    if (!this.selected || this.ar?.drawing) return;
     this.selected.wrapper.scale.setScalar(clampScale(value));
     if (emit) this.emit();
   }
@@ -368,17 +378,18 @@ export class Viewer {
       resetMapGains(this.selected.materialControls, target);
   }
   setPosition(axis, value) {
-    if (!this.selected || !Number.isFinite(value)) return;
+    if (!this.selected || this.ar?.drawing || !Number.isFinite(value)) return;
     this.selected.wrapper.position[axis] = Math.max(-8, Math.min(8, value));
     this.emit();
   }
   setRotation(degrees) {
-    if (!this.selected) return;
+    if (!this.selected || this.ar?.drawing) return;
     this.selected.wrapper.rotation.y = (degrees * Math.PI) / 180;
     this.emit();
   }
   resetSelected() {
-    if (!this.selected) return;
+    if (!this.selected || this.ar?.drawing) return;
+    if (this.ar?.active) return this.ar.placeSelected(true);
     this.xr.cancelGrab();
     const w = this.selected.wrapper;
     w.position.set(0, 0.28, 0);
@@ -390,18 +401,21 @@ export class Viewer {
     if (this.selected) this.setScale(1 / this.selected.fit);
   }
   setPlaying(value) {
+    if (this.ar?.drawing) return;
     if (this.selected?.mixer) {
       this.selected.playing = value;
       this.emit();
     }
   }
   setSpeed(value) {
+    if (this.ar?.drawing) return;
     if (this.selected) {
       this.selected.speed = value;
       this.emit();
     }
   }
   seek(seconds) {
+    if (this.ar?.drawing) return;
     const m = this.selected;
     if (!m?.action) return;
     m.action.time = T.MathUtils.clamp(seconds, 0, m.clips[m.clip].duration);
@@ -410,6 +424,7 @@ export class Viewer {
     this.emit();
   }
   setSceneSetting(key, value) {
+    if (key === "autoRotate" && this.ar?.drawing) return;
     if (!(key in this.settings)) return;
     this.settings = { ...this.settings, [key]: value };
     if (key === "grid") this.gallery.grid.visible = value;
@@ -419,6 +434,7 @@ export class Viewer {
     this.emit();
   }
   setClip(index) {
+    if (this.ar?.drawing) return;
     const m = this.selected;
     if (!m?.clips[index]) return;
     m.action?.fadeOut(0.2);
@@ -437,6 +453,7 @@ export class Viewer {
     if (!m) return;
     this.xr.cancelGrab();
     m.mixer?.stopAllAction();
+    this.ar?.forget(m);
     m.mixer?.uncacheRoot(m.root);
     this.scene.remove(m.wrapper);
     disposeObject(m.wrapper);
@@ -467,14 +484,20 @@ export class Viewer {
       .add(this.orbit.target);
     this.orbit.update();
   }
-  async enterVR() {
+  enterVR() { return this.enterXR("immersive-vr"); }
+  enterAR() { return this.enterXR("immersive-ar"); }
+  async enterXR(mode) {
+    if (this.xrStarting || this.renderer.xr.isPresenting) return;
+    if (!["immersive-vr", "immersive-ar"].includes(mode)) throw new Error("Неизвестный режим XR.");
     if (!navigator.xr)
       throw new Error(
         "Откройте эту страницу в Meta Quest Browser на шлеме Quest 3. На компьютере доступен обычный 3D-просмотр.",
       );
     let session;
+    this.xrStarting = true;
+    this.xrMode = mode;
     try {
-      session = await navigator.xr.requestSession("immersive-vr", {
+      session = await navigator.xr.requestSession(mode, {
         requiredFeatures: ["local-floor"],
         optionalFeatures: ["bounded-floor"],
       });
@@ -483,7 +506,11 @@ export class Viewer {
         await session.updateTargetFrameRate(72).catch(() => {});
     } catch (e) {
       await session?.end().catch(() => {});
+      this.ar?.end();
+      this.xrMode = null;
       throw e;
+    } finally {
+      this.xrStarting = false;
     }
   }
   emit() {
@@ -525,6 +552,8 @@ export class Viewer {
           }
         : null,
       immersive: this.renderer.xr.isPresenting,
+      xrMode: this.xrMode,
+      drawing: !!this.ar?.drawing,
     });
   }
   dispose() {

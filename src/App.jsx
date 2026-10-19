@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Headset,
+  Scan,
   CircleHelp,
   Focus,
   ZoomIn,
@@ -44,7 +45,8 @@ export default function App() {
     [message, setMessage] = useState(null),
     [dialog, setDialog] = useState(null),
     [fatal, setFatal] = useState(""),
-    [xr, setXR] = useState(false),
+    [xr, setXR] = useState({ vr: null, ar: null }),
+    [entering, setEntering] = useState(false),
     [dragging, setDragging] = useState(false),
     [mobilePanel, setMobilePanel] = useState("none");
   const working = useRef(false);
@@ -68,12 +70,10 @@ export default function App() {
       );
       return;
     }
-    navigator.xr
-      ?.isSessionSupported("immersive-vr")
-      .then((supported) => {
-        if (alive) setXR(supported);
-      })
-      .catch(() => {});
+    for (const mode of ["vr", "ar"])
+      Promise.resolve(navigator.xr?.isSessionSupported("immersive-" + mode) || false)
+        .catch(() => false)
+        .then(supported => { if (alive) setXR(previous => ({ ...previous, [mode]: supported })); });
     working.current = true;
     setBusy("Открываем вашу коллекцию…");
     savedModels()
@@ -215,15 +215,19 @@ export default function App() {
       return false;
     }
   }
-  async function enterVR() {
-    if (!xr) {
+  async function enterXR(mode) {
+    if (!xr[mode]) {
       setDialog("help");
+      if (mode === "ar") notify("AR доступен в Meta Quest Browser на Quest 3. Этот браузер не поддерживает immersive AR.");
       return;
     }
+    setEntering(true);
     try {
-      await viewer.current.enterVR();
+      await viewer.current.enterXR("immersive-" + mode);
     } catch (e) {
-      notify(`VR не запущен: ${e.message}`, true);
+      notify(`${mode.toUpperCase()} не запущен: ${e.message}`, true);
+    } finally {
+      setEntering(false);
     }
   }
   return (
@@ -264,11 +268,20 @@ export default function App() {
           </button>
           <button
             className="primary vr-button"
-            disabled={!!fatal || !!busy}
-            onClick={enterVR}
+            disabled={!!fatal || !!busy || entering || xr.vr === null}
+            onClick={() => enterXR("vr")}
           >
             <Headset size={20} />
             Войти в VR
+          </button>
+          <button
+            className="primary vr-button ar-button"
+            disabled={!!fatal || !!busy || entering || xr.ar === null}
+            onClick={() => enterXR("ar")}
+            title="Модели в вашей комнате · Meta Quest 3"
+          >
+            <Scan size={20} />
+            Войти в AR
           </button>
         </div>
       </header>
@@ -406,7 +419,7 @@ export default function App() {
         </span>
         <span>
           <Headset size={16} />
-          {xr ? "Шлем готов · WebXR" : "WebXR · Quest 3"}
+          {xr.ar ? "VR + AR · Quest 3" : xr.vr ? "Шлем готов · WebXR" : "WebXR · Quest 3"}
         </span>
       </footer>
       {message && (

@@ -64,6 +64,7 @@ export function installXR(viewer) {
     thumbScaling = false;
   }
   function teleportTo(point) {
+    if (viewer.ar.active) return;
     const p = head().getWorldPosition(new T.Vector3());
     rig.position.x += point.x - p.x;
     rig.position.z += point.z - p.z;
@@ -71,10 +72,16 @@ export function installXR(viewer) {
   }
   function home() {
     cancelInteractions();
+    if (viewer.ar.active) {
+      menu.tab = "drawing";
+      menu.open(head(), "main");
+      return;
+    }
     teleportTo(new T.Vector3(0, 0, 3.6));
     menu.open(head(), "main");
   }
   function inspect() {
+    if (viewer.ar.active) return viewer.ar.placeSelected();
     if (!viewer.selected) return;
     const box = new T.Box3().setFromObject(viewer.selected.wrapper),
       center = box.getCenter(new T.Vector3()),
@@ -104,7 +111,7 @@ export function installXR(viewer) {
     inspect,
     exit: () => {
       const s = renderer.xr.getSession();
-      if (s) s.end().catch(() => notify("Не удалось завершить VR-сеанс"));
+      if (s) s.end().catch(() => notify("Не удалось завершить сеанс"));
     },
   });
   const marker = new T.Mesh(
@@ -161,7 +168,7 @@ export function installXR(viewer) {
     }
   }
   function startGrip(c) {
-    if (!focused || menu.hit(cast(c))) return;
+    if (!focused || viewer.ar.drawing || menu.hit(cast(c))) return;
     const hit = objectHit(c);
     if (!hit) return;
     if (grips.size && hit.id !== viewer.selected?.id) return;
@@ -179,7 +186,7 @@ export function installXR(viewer) {
       pulse(c, 0.28, 20);
       return;
     }
-    c.selectedOnPress = objectHit(c)?.id || null;
+    c.selectedOnPress = viewer.ar.drawing ? null : objectHit(c)?.id || null;
   }
   function selectEnd(c) {
     if (!focused) return;
@@ -290,7 +297,8 @@ export function installXR(viewer) {
     renderer.xr.cameraAutoUpdate = false;
     viewer.camera.position.set(0, 0, 0);
     viewer.camera.quaternion.identity();
-    rig.position.set(0, 0, 3.6);
+    if (viewer.xrMode === "immersive-ar") viewer.ar.begin();
+    rig.position.set(0, 0, viewer.ar.active ? 0 : 3.6);
     rig.rotation.set(0, 0, 0);
     rig.updateMatrixWorld(true);
     session = renderer.xr.getSession();
@@ -306,6 +314,9 @@ export function installXR(viewer) {
     menu.close();
     selection.visible = false;
     needsPlacement = false;
+    viewer.ar.end();
+    viewer.xrMode = null;
+    for (const c of controls) c.model.visible = true;
     rig.position.set(0, 0, 0);
     rig.rotation.set(0, 0, 0);
     renderer.xr.cameraAutoUpdate = true;
@@ -325,16 +336,21 @@ export function installXR(viewer) {
     menu,
     controls,
     cancelGrab,
+    cancelInteractions,
     isManipulating: () => grips.size > 0 || thumbScaling,
     update(dt) {
       if (disposed || !renderer.xr.isPresenting) return;
       rig.updateMatrixWorld(true);
       renderer.xr.updateCamera(viewer.camera);
-      if (needsPlacement && --needsPlacement === 0) menu.open(head(), "main");
+      if (needsPlacement && --needsPlacement === 0) {
+        viewer.ar.initialize();
+        menu.tab = viewer.ar.active ? "drawing" : "collection";
+        menu.open(head(), "main");
+      }
       if (!focused) return;
       if ([...grips].some((c) => !c.grip.visible)) cancelGrab();
       const selected = viewer.selected;
-      if (gesture && viewer.models.has(gesture.id)) {
+      if (!viewer.ar.drawing && gesture && viewer.models.has(gesture.id)) {
         const object = viewer.models.get(gesture.id).wrapper,
           hands = [...grips];
         if (hands.length === 1 && gesture.relative)
@@ -348,12 +364,14 @@ export function installXR(viewer) {
             hands[0].grip.getWorldPosition(new T.Vector3()),
             hands[1].grip.getWorldPosition(new T.Vector3()),
           );
-        object.position.x = T.MathUtils.clamp(object.position.x, -4, 4);
-        object.position.z = T.MathUtils.clamp(object.position.z, -4, 5.5);
-        object.position.y = T.MathUtils.clamp(object.position.y, 0, 5);
+        if (!viewer.ar.active) {
+          object.position.x = T.MathUtils.clamp(object.position.x, -4, 4);
+          object.position.z = T.MathUtils.clamp(object.position.z, -4, 5.5);
+          object.position.y = T.MathUtils.clamp(object.position.y, 0, 5);
+        }
         object.updateMatrixWorld(true);
       }
-      selection.visible = !!selected;
+      selection.visible = !!selected && !viewer.ar.drawing;
       selectionElapsed += dt;
       if (selected && (selectionElapsed > 0.1 || selected.id !== selectionId)) {
         selection.setFromObject(selected.wrapper);
@@ -377,6 +395,7 @@ export function installXR(viewer) {
           recenterButton = !!buttons[5]?.pressed;
         if (buttonEdge(c.menuButton, menuButton)) {
           cancelInteractions();
+          if (viewer.ar.drawing) menu.tab = "drawing";
           menu.toggle(head(), "main");
           pulse(c);
         }
@@ -388,8 +407,13 @@ export function installXR(viewer) {
         }
         c.menuButton = menuButton;
         c.recenterButton = recenterButton;
+        c.model.visible = !viewer.ar.drawing || menu.visible;
+        if (viewer.ar.drawing && !menu.visible) {
+          c.dot.visible = c.beam.visible = false;
+          continue;
+        }
         const hit = menu.hit(cast(c)),
-          object = hit ? null : objectHit(c);
+          object = hit || viewer.ar.drawing ? null : objectHit(c);
         if (menu.setHover(c.index, hit)) pulse(c, 0.08, 10);
         if (c.menuPress) menu.move(c.index, hit);
         const target = hit || object;
@@ -417,7 +441,7 @@ export function installXR(viewer) {
             turningAxis = x;
           }
         }
-        if (input.handedness === "left") {
+        if (input.handedness === "left" && !viewer.ar.active) {
           const aiming = y < -0.65 && !gripModifier && !grips.size && !c.menuPress && !hit;
           if (aiming) {
             c.teleporting = true;
@@ -451,7 +475,7 @@ export function installXR(viewer) {
         }
       }
       const blocked = controls.some((c) => c.menuPress || c.teleporting);
-      const scaled = gripModifier && !blocked && !menu.confirm && !menu.busy && !viewer.catalogLoad
+      const scaled = !viewer.ar.drawing && gripModifier && !blocked && !menu.confirm && !menu.busy && !viewer.catalogLoad
         && scaleSmooth(selected?.wrapper, scalingAxis, dt);
       if (scaled) {
         // Rebase the held transform so dragging on the next frame cannot restore
@@ -464,7 +488,7 @@ export function installXR(viewer) {
         scaleEmitElapsed = 0;
       }
       thumbScaling = !!scaled;
-      if (!gripModifier && !grips.size && !teleported && !blocked) {
+      if (!viewer.ar.active && !gripModifier && !grips.size && !teleported && !blocked) {
         if (turnSmooth(rig, head(), turningAxis, dt)) renderer.xr.updateCamera(viewer.camera);
         moveSmooth(rig, head(), movementAxis, dt, viewer.models.values(), viewer.gallery.plinth);
         rig.updateMatrixWorld(true);

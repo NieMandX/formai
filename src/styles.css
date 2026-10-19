@@ -113,8 +113,14 @@ p {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 25px;
+  gap: 12px;
 }
+.primary.ar-button {
+  color: #31564a;
+  background: #e7efe8;
+  box-shadow: inset 0 0 0 1px #cad9cd;
+}
+.primary.ar-button:not(:disabled):hover { background: #d7e6db; }
 .help-button {
   display: flex;
   align-items: center;
@@ -977,6 +983,10 @@ footer span {
   .vr-button svg {
     width: 17px;
   }
+  .header .vr-button { white-space: nowrap; padding: 11px 10px; }
+  .header .brand small { display: none; }
+  .header .brand-symbol { display: none; }
+  .header .brand strong { font-size: 17px; }
   .workspace {
     display: block;
     position: relative;

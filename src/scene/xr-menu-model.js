@@ -54,10 +54,11 @@ export function buildMenuLayout(state) {
       disabled: !state.model && id !== "exposure",
     });
   const model = state.model,
-    settings = state.settings;
+    settings = state.settings,
+    tabs = state.ar ? [...TABS, ["drawing", "Рисование", "focus"]] : TABS;
   label("FORMAI", 38, 72, 40, { weight: 700, sidebar: true });
-  label("СТУДИЯ В VR", 40, 116, 20, { sidebar: true, muted: true });
-  TABS.forEach(([id, text, icon], i) =>
+  label(state.ar ? "В ВАШЕЙ КОМНАТЕ" : "СТУДИЯ В VR", 40, 116, 20, { sidebar: true, muted: true });
+  tabs.forEach(([id, text, icon], i) =>
     button("tab:" + id, text, 24, 178 + i * 126, 236, 102, {
       icon,
       sidebar: true,
@@ -69,7 +70,7 @@ export function buildMenuLayout(state) {
     sidebar: true,
     active: state.tab === "help",
   });
-  button("exit", "Выйти из VR", 24, 936, 236, 94, {
+  button("exit", state.ar ? "Выйти из AR" : "Выйти из VR", 24, 936, 236, 94, {
     icon: "exit",
     sidebar: true,
   });
@@ -81,10 +82,10 @@ export function buildMenuLayout(state) {
     icon: "close",
     iconOnly: true,
   });
-  const title = TABS.find((t) => t[0] === state.tab)?.[1] || "Управление";
+  const title = tabs.find((t) => t[0] === state.tab)?.[1] || "Управление";
   label(title, 316, 82, 42, { weight: 650 });
   label(
-    state.tab === "collection"
+    state.tab === "drawing" ? (state.drawing ? "Поза зафиксирована · можно рисовать" : "Разместите модели, затем зафиксируйте сцену") : state.tab === "collection"
       ? `${REFERENCE_MODELS.length} поз · ${state.models.length} из 12 моделей в комнате`
       : state.tab === "object" && model
         ? `${model.name} · ${(model.triangles || 0).toLocaleString("ru-RU")} треугольников`
@@ -98,7 +99,7 @@ export function buildMenuLayout(state) {
     muted: true,
   });
   label(
-    state.notice || "Курок — выбрать · Боковая кнопка — захват",
+    state.notice || (state.drawing ? "Сцена зафиксирована · A → Рисование → Снять фиксацию" : "Курок — выбрать · Боковая кнопка — захват"),
     318,
     982,
     24,
@@ -108,7 +109,7 @@ export function buildMenuLayout(state) {
     label(
       state.confirm.type === "delete"
         ? "Убрать модель?"
-        : "Завершить VR-сеанс?",
+        : `Завершить ${state.ar ? "AR" : "VR"}-сеанс?`,
       330,
       320,
       40,
@@ -128,7 +129,7 @@ export function buildMenuLayout(state) {
         ? state.confirm.reference
           ? "Поза останется в каталоге. Её можно открыть снова."
           : "Локальная сохранённая копия тоже будет удалена."
-        : "Модели останутся в текущей комнате.",
+        : state.ar ? "Модели вернутся на свои места в виртуальной галерее." : "Модели останутся в текущей комнате.",
       330,
       460,
       25,
@@ -137,7 +138,7 @@ export function buildMenuLayout(state) {
     button("cancel", "Отмена", 330, 570, 470, 110);
     button(
       "confirm",
-      state.confirm.type === "delete" ? "Убрать модель" : "Выйти из VR",
+      state.confirm.type === "delete" ? "Убрать модель" : `Выйти из ${state.ar ? "AR" : "VR"}`,
       826,
       570,
       520,
@@ -149,7 +150,21 @@ export function buildMenuLayout(state) {
       labels,
     };
   }
-  if (state.tab === "collection") {
+  if (state.tab === "drawing" && state.ar) {
+    label("01   ВЫБЕРИТЕ И РАЗМЕСТИТЕ", 316, 216, 24, { muted: true });
+    label("Art — позы для рисунка · Arch — объекты", 316, 264, 29);
+    button("tab:collection", "Выбрать модель", 316, 306, 504, 100, { icon: "box" });
+    button("drawing:place", "Поставить перед собой", 846, 306, 514, 100, { disabled: !model || state.drawing, icon: "focus" });
+    label("Боковая кнопка — перенос и поворот рукой.", 316, 460, 27);
+    label("Правый захват + стик ↑↓ — плавный масштаб.", 316, 506, 27);
+    button("drawing:floor", "Опустить выбранную модель на пол", 316, 546, 1044, 94, { disabled: !model || state.drawing });
+    label("02   ЗАФИКСИРУЙТЕ ДЛЯ РИСОВАНИЯ", 316, 704, 24, { muted: true });
+    label("Анимация замрёт, панели и лучи скроются. A — вернуть меню.", 316, 752, 26, { maxWidth: 1044 });
+    button("drawing:lock", state.drawing ? "Снять фиксацию" : "Зафиксировать для рисования", 316, 798, 1044, 116, {
+      primary: true, icon: state.drawing ? "play" : "pause",
+      disabled: !state.drawing && !state.models.length,
+    });
+  } else if (state.tab === "collection") {
     const view = catalogView(state.collectionPath, state.models),
       entries = view.entries,
       ownModels = personalModels(state.models);
@@ -170,7 +185,7 @@ export function buildMenuLayout(state) {
         icon: entry.folder ? "folder" : "box",
         thumb: entry.folder ? undefined : entry.id,
         subtitle: entry.subtitle + (entry.folder ? "" : model?.id === entry.id ? " · выбрана" : loaded ? " · в комнате" : " · добавить"),
-        disabled: !entry.folder && state.busy,
+        disabled: !entry.folder && (state.busy || (state.drawing && !loaded)),
       });
     });
     if (!entries.length) label("Своих моделей в комнате нет", 342, 354, 30, { muted: true });
@@ -234,11 +249,11 @@ export function buildMenuLayout(state) {
     label("Масштаб: два захвата или правый захват + стик ↑↓", 316, 720, 24, {
       muted: true,
     });
-    button("reset", "На пьедестал", 316, 764, 496, 96, {
+    button("reset", state.ar ? "Сбросить перед собой" : "На пьедестал", 316, 764, 496, 96, {
       disabled: !model,
       icon: "reset",
     });
-    button("inspect", "Подойти к модели", 840, 764, 520, 96, {
+    button("inspect", state.ar ? "Поставить перед собой" : "Подойти к модели", 840, 764, 520, 96, {
       disabled: !model,
       icon: "focus",
     });
@@ -347,30 +362,36 @@ export function buildMenuLayout(state) {
     button("grid", "Сетка пола", 316, 542, 1044, 104, {
       toggle: true,
       value: settings.grid,
+      disabled: state.ar,
     });
     button("autoRotate", "Автовращение модели", 316, 670, 1044, 104, {
       toggle: true,
       value: settings.autoRotate,
       disabled: !model,
     });
-    button("home", "Вернуться к входу", 316, 810, 1044, 104, { icon: "reset" });
+    button("home", state.ar ? "К настройке рисования" : "Вернуться к входу", 316, 810, 1044, 104, { icon: "reset" });
   } else {
     [
       ["Курок", "Выбрать объект или нажать кнопку меню"],
       ["Боковая кнопка", "Захватить модель и перемещать рукой"],
       ["Два захвата", "Развести руки — масштаб; повернуть — вращение"],
-      ["Левый стик вперёд", "Выбрать место на полу; отпустить — телепорт"],
-      ["Правый стик", "Идти и поворачивать: сильнее наклон — быстрее"],
+      state.ar ? ["Ваша комната", "Обходите модель физически; ходьба стиками отключена"] : ["Левый стик вперёд", "Выбрать место на полу; отпустить — телепорт"],
+      state.ar ? ["Рисование", "Фиксация останавливает позу; A возвращает меню"] : ["Правый стик", "Идти и поворачивать: сильнее наклон — быстрее"],
       ["Правый захват + стик ↑↓", "Вперёд — увеличить; назад — уменьшить модель"],
       ["A / X · B · Y", "Основное меню · материалы · вернуть панель"],
     ].forEach(([heading, body], i) => {
       label(heading, 316, 206 + i * 102, 29, { weight: 650 });
       label(body, 316, 246 + i * 102, 25, { muted: true, maxWidth: 1044 });
     });
-    label("Файлы добавляются в веб-версии до входа в VR.", 316, 940, 25, {
+    label(state.ar ? "Размещение в AR действует до завершения сеанса." : "Файлы добавляются в веб-версии до входа в VR.", 316, 940, 25, {
       muted: true,
     });
   }
+  if (state.drawing)
+    controls.forEach(c => {
+      if (["scale", "rotation", "reset", "inspect", "playing", "speed", "time", "autoRotate"].includes(c.id)
+          || c.id.startsWith("position:") || c.id.startsWith("clip:")) c.disabled = true;
+    });
   if (state.busy)
     controls.forEach((c) => {
       if (!c.id.startsWith("tab:") && c.id !== "close" && c.id !== "recenter")

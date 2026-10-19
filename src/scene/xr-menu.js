@@ -123,6 +123,8 @@ export class SpatialMenu {
     }
     return {
       mode: this.mode,
+      ar: !!this.viewer.ar?.active,
+      drawing: !!this.viewer.ar?.drawing,
       tab: this.tab,
       page: this.page,
       collectionPath: this.collectionPath,
@@ -290,6 +292,9 @@ export class SpatialMenu {
       const control = this.layout.controls.find(c => c.id === id);
       if (control && !control.disabled) { this.materialPage = control.targetPage; this.pressed.clear(); }
     } else if (id === "maps:reset") v.resetMapGains(this.materialTarget);
+    else if (id === "drawing:lock") v.ar.setDrawing(!v.ar.drawing);
+    else if (id === "drawing:place") v.ar.placeSelected();
+    else if (id === "drawing:floor") { v.ar.floor(); v.emit(); }
     else if (id.startsWith("tab:")) {
       this.tab = id.slice(4);
       this.confirm = null;
@@ -352,7 +357,7 @@ export class SpatialMenu {
         );
     } else if (id === "reset") {
       v.resetSelected();
-      this.toast("Модель установлена на пьедестал");
+      this.toast(v.ar?.active ? "Модель установлена перед вами" : "Модель установлена на пьедестал");
     } else if (id === "inspect") {
       this.actions.inspect();
     } else if (id === "delete" && v.selected)

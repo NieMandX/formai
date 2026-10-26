@@ -125,3 +125,13 @@ VR-интерфейс проверен в Chromium с Meta IWER и профил�
 У Ariel и Chloe перенесены цветовые микродетали кожи; у Nat — нормали, AO (R), cavity (G), curvature (B), сухая и влажная карты specular RGB / roughness A, микронормали с маской, lookup рассеяния, цвет обратного рассеяния и sheen-маска. У глаз всех трёх моделей — нормали и отражения. Нормали Unity DXT5nm преобразованы в XYZ с учётом переворота UV V. Все карты имеют полную цепочку mip-уровней и исходное разрешение. Корнеальные отражения используют прозрачное смешивание без чёрной поверхности и непрозрачной тени.
 
 Оригинальные закрытые Unity-шейдеры адаптированы к Three.js PBR; побитовое совпадение рендера не предполагается. Runtime RenderTexture для интерактивного рисования влажности не является сохранённой картой: вместо него используется слабое равномерное смешивание поставленных dry/wet-карт. Обработка применяется только к версионированным материалам FORMAI; сторонние GLTF не изменяются.
+
+### Spatial models / Gaussian Splatting
+
+Art contains the original `vrgirlz ariel cream outfit 024 spatial model` folder with Ariel · Cream Outfit 024. The original 126,151,691-byte PLY is fetched from the existing release at build time, verified by SHA-256, and served from Pages under `models/spatial/`. All 508,670 Gaussians and SH3 are loaded with Spark 2.4.0, float32 positions and no LoD reduction. The original file is unchanged.
+
+Gaussian PLY is detected by its vertex properties; ordinary triangle PLY still uses Three's PLYLoader. Binary little-endian float32 3DGS PLY is supported, up to 250 MiB and 2 million splats per file. Generic imports assume the conventional COLMAP Y-down coordinates. This model has baked appearance, no PBR maps or skeletal animation. The B panel explains this and still offers unloading.
+
+The renderer is lazy-loaded, shares the WebXR scene and alpha passthrough, and uses radial sorting. Bounds support framing, AR placement and scale. Controller selection uses an invisible bounds proxy to avoid scanning all Gaussians per pointer per frame. Removing the last spatial model disposes its renderer and sort workers. Original PBR models retain their rendering and controls. Physical Quest 3 frame rate and passthrough must be checked on-device.
+
+Renderer documentation: https://sparkjs.dev/docs/spark-renderer/ and https://sparkjs.dev/docs/splat-mesh/ (Spark MIT).

@@ -12,6 +12,7 @@
     "predev": "node scripts/prepare-assets.mjs"
   },
   "dependencies": {
+    "@sparkjsdev/spark": "2.4.0",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

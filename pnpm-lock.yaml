@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@sparkjsdev/spark':
+        specifier: 2.4.0
+        version: 2.4.0(three@0.180.0)
       lucide-react:
         specifier: ^0.468.0
         version: 0.468.0(react@19.3.0)
@@ -438,6 +441,11 @@ packages:
     resolution: {integrity: sha512-9/c9PWdr5GCIHkkxiHM1HjNBQMVdftP4O8QTcoUAaRza2FSqJ4axbf8QAnBuE6BIGQDl71SaRPeDdDYid5ecTw==}
     cpu: [x64]
     os: [win32]
+
+  '@sparkjsdev/spark@2.4.0':
+    resolution: {integrity: sha512-aUjgBfhwDRcF3nUwiAD6Nh7IwvxEmW9liz2qrAXIm2BlPYBmn81QbXIpGFLBSr/o0TKGvEXbNIsKujgPGV/7QQ==}
+    peerDependencies:
+      three: '>=0.180.0'
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -946,6 +954,10 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.64.6':
     optional: true
+
+  '@sparkjsdev/spark@2.4.0(three@0.180.0)':
+    dependencies:
+      three: 0.180.0
 
   '@types/babel__core@7.20.5':
     dependencies:

@@ -4,6 +4,7 @@ import path from "node:path";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import { makeRobot } from "../src/scene/demos.js";
 import { prepareSpatial } from "./prepare-spatial.mjs";
+import { prepareScans } from "./prepare-scans.mjs";
 import { prepareReferences } from "./prepare-references.mjs";
 const require = createRequire(import.meta.url),
   threeRoot = path.resolve(path.dirname(require.resolve("three")), "..");
@@ -109,3 +110,4 @@ console.log("Prepared locally hosted Quest Touch Plus controller profiles.");
 await prepareReferences();
 
 await prepareSpatial();
+await prepareScans();

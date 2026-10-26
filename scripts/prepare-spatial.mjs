@@ -5,7 +5,8 @@ import { SPATIAL_MODELS } from "../src/spatial-catalog.js";
 export async function prepareSpatial() {
   const directory = new URL("../public/models/spatial/", import.meta.url);
   await mkdir(directory, { recursive: true });
-  for (const model of SPATIAL_MODELS) {
+  const localModels = SPATIAL_MODELS.filter(model => !model.url);
+  for (const model of localModels) {
     const target = new URL(model.file, directory);
     const valid = bytes => bytes?.length === model.bytes &&
       createHash("sha256").update(bytes).digest("hex") === model.sha256;
@@ -19,5 +20,5 @@ export async function prepareSpatial() {
     await writeFile(temporary, bytes);
     await rename(temporary, target);
   }
-  console.log(`Prepared ${SPATIAL_MODELS.length} original Gaussian PLY model(s).`);
+  console.log(`Prepared ${localModels.length} local Gaussian PLY model(s); ${SPATIAL_MODELS.length - localModels.length} use cloud storage.`);
 }

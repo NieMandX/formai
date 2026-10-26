@@ -1,6 +1,7 @@
 import { RotateCcw, Play, Pause, Sparkles } from "lucide-react";
 import { referenceById, referenceDetail } from "../reference-catalog.js";
 import { SplatInspector } from "./SplatInspector.jsx";
+import { scanDetail } from "../scan-catalog.js";
 export function Toggle({ label, checked, onChange }) {
   return (
     <label className="toggle-row">
@@ -31,6 +32,7 @@ export function Inspector({ model, viewer, settings, setSettings }) {
                 ? "Gaussian Splatting · исходное качество"
               : model.reference
                 ? referenceDetail(referenceById(model.id))
+              : model.scan ? scanDetail(model)
               : `${model.format} · локальная коллекция`
             : "Добавьте модель в коллекцию"}
         </p>

@@ -66,3 +66,39 @@ test("missing, oversized, truncated and cancelled downloads fail without false s
   controller.abort();
   await assert.rejects(downloadModel(url, { signal: controller.signal }), { name: "AbortError" });
 });
+
+test("slow downloads continue while chunks arrive and release their idle timer", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let connectionSignal;
+  t.mock.method(globalThis, "fetch", async (_, { signal }) => {
+    connectionSignal = signal;
+    let sent = 0;
+    return new Response(new ReadableStream({
+      pull(controller) {
+        t.mock.timers.tick(60000);
+        signal.throwIfAborted();
+        if (sent < 6) controller.enqueue(new Uint8Array([++sent]));
+        else controller.close();
+      },
+    }, { highWaterMark: 0 }));
+  });
+  const data = await downloadModel("https://example.test/slow.ply", { expectedBytes: 6 });
+  assert.deepEqual([...new Uint8Array(data)], [1, 2, 3, 4, 5, 6]);
+  t.mock.timers.tick(180000);
+  assert.equal(connectionSignal.aborted, false);
+});
+
+test("a stalled download aborts with a useful message and no completion progress", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  t.mock.method(globalThis, "fetch", async (_, { signal }) => new Response(new ReadableStream({
+    start(controller) {
+      signal.addEventListener("abort", () => controller.error(signal.reason), { once: true });
+    },
+    pull() { t.mock.timers.tick(180000); },
+  }, { highWaterMark: 0 })));
+  const progress = [];
+  await assert.rejects(downloadModel("https://example.test/stalled.ply", {
+    onProgress: value => progress.push(value),
+  }), { name: "TimeoutError", message: /не передаёт данные/ });
+  assert.ok(!progress.includes(1));
+});

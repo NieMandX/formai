@@ -6,8 +6,9 @@ import { createSplatProxy } from "../src/scene/splat-proxy.js";
 import { Viewer } from "../src/scene/Viewer.js";
 import { ARWorkspace } from "../src/scene/ar-workspace.js";
 import { validateFiles } from "../src/model-utils.js";
-import { catalogView, personalModels } from "../src/library-catalog.js";
-import { SPATIAL_MODELS } from "../src/spatial-catalog.js";
+import { catalogView, personalModels, SPATIAL_FOLDERS } from "../src/library-catalog.js";
+import { SPATIAL_MODELS, spatialPath } from "../src/spatial-catalog.js";
+import { SCAN_MODELS } from "../src/scan-catalog.js";
 import { buildMaterialMenuLayout } from "../src/scene/xr-material-menu.js";
 
 const fields = "x y z f_dc_0 f_dc_1 f_dc_2 opacity scale_0 scale_1 scale_2 rot_0 rot_1 rot_2 rot_3".split(" ");
@@ -26,8 +27,12 @@ test("Gaussian detection distinguishes ordinary PLY and rejects truncated payloa
   assert.throws(() => validateFiles([{ name: "scan.ply", size: 251 * 1024 ** 2 }]));
 });
 test("spatial catalog preserves all existing references and routes the new figure as a built-in", () => {
-  assert.equal(catalogView("art").entries.flatMap(f => f.models).length, 44);
-  assert.deepEqual(catalogView("art/spatial").entries, SPATIAL_MODELS);
+  assert.equal(catalogView("art").entries.flatMap(f => f.models).length, 47 + SCAN_MODELS.length);
+  assert.deepEqual(catalogView("art/spatial").entries, [SPATIAL_MODELS[0]]);
+  assert.deepEqual(SPATIAL_FOLDERS.flatMap(f => catalogView(f.id).entries), SPATIAL_MODELS);
+  for (const model of SPATIAL_MODELS) assert.equal(catalogView(model.folderId).name, model.sourceFolder);
+  assert.equal(spatialPath(SPATIAL_MODELS[0], "/formai/"), "/formai/models/spatial/Ariel-Cream-Outfit-024.ply");
+  assert.equal(spatialPath(SPATIAL_MODELS[1]), "https://formai-models.s3.cloud.ru/spatial/Ariel-Blue-Swim-026.ply");
   assert.equal(personalModels(SPATIAL_MODELS).length, 0);
 });
 test("splat bounds support transformed framing, controller rays and near/far limits", () => {

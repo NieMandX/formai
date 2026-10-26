@@ -1,13 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { catalogView, ART_FOLDERS } from "../src/library-catalog.js";
+import { catalogView, ART_FOLDERS, SPATIAL_FOLDERS } from "../src/library-catalog.js";
 import { REFERENCE_MODELS } from "../src/reference-catalog.js";
 import { buildMenuLayout, MENU } from "../src/scene/xr-menu-model.js";
 import { SpatialMenu } from "../src/scene/xr-menu.js";
 
 test("Art partitions all 43 references exactly once under the original source directories", () => {
   assert.deepEqual(catalogView().entries.map(f => f.name), ["Art", "Arch"]);
-  assert.deepEqual(catalogView("art").entries.filter(f => f.id !== "art/spatial").map(f => [f.name, f.models.length]), [
+  assert.deepEqual(ART_FOLDERS.map(f => [f.name, f.models.length]), [
     ["VRGirlz-09-Ariel-BVR-v1.5", 10],
     ["VRGirlz-18-Nat-AVR-v1.5", 10],
     ["VRGirlz-21-Nat-AVR-v1.5", 5],
@@ -46,7 +46,7 @@ test("VR folder navigation resets pagination and pointers without changing the s
 });
 
 test("all folder pages have safe VR hit targets and a route to the parent", () => {
-  for (const collectionPath of ["", "art", "arch", "local", ...ART_FOLDERS.map(f => f.id)]) {
+  for (const collectionPath of ["", "art", "arch", "local", ...ART_FOLDERS.map(f => f.id), ...SPATIAL_FOLDERS.map(f => f.id)]) {
     const view = catalogView(collectionPath);
     for (let page = 0; page < Math.max(1, Math.ceil(view.entries.length / 4)); page++) {
       const { controls } = buildMenuLayout({ collectionPath, page, tab: "collection", models: [{ id: "own", format: "GLB", name: "Own" }], settings: {} });

@@ -1,4 +1,5 @@
 import { SPATIAL_MODELS } from "./spatial-catalog.js";
+import { SCAN_MODELS } from "./scan-catalog.js";
 import { REFERENCE_MODELS, referenceDetail } from "./reference-catalog.js";
 
 export const DEMO_MODELS = [
@@ -20,17 +21,20 @@ export const ART_FOLDERS = [
     .map(m => ({ ...m, reference: true, subtitle: referenceDetail(m) })),
 }));
 
-const spatialFolder = {
-  id: "art/spatial", name: "vrgirlz ariel cream outfit 024 spatial model",
-  folder: true, parent: "art", models: SPATIAL_MODELS,
+export const SPATIAL_FOLDERS = SPATIAL_MODELS.map(m => ({
+  id: m.folderId, name: m.sourceFolder,
+  folder: true, parent: "art", models: [m],
   subtitle: "Spatial · Gaussian Splatting · 1 модель",
-};
+}));
 const roots = [
-  { id: "art", name: "Art", folder: true, parent: "", subtitle: `${REFERENCE_MODELS.length + SPATIAL_MODELS.length} модели · ${ART_FOLDERS.length + 1} папок` },
+  { id: "art", name: "Art", folder: true, parent: "", subtitle: `${REFERENCE_MODELS.length + SPATIAL_MODELS.length + SCAN_MODELS.length} моделей · ${ART_FOLDERS.length + SPATIAL_FOLDERS.length + SCAN_MODELS.length} папок` },
   { id: "arch", name: "Arch", folder: true, parent: "", subtitle: "Робот, архитектура и узел · 3 модели" },
 ];
-const builtInIds = new Set([...REFERENCE_MODELS, ...SPATIAL_MODELS, ...DEMO_MODELS].map(m => m.id));
-const folders = new Map([...roots, ...ART_FOLDERS, spatialFolder].map(f => [f.id, f]));
+const scanFolders = SCAN_MODELS.map(m => ({ id: `art/${m.id}`, name: m.sourceFolder, folder: true,
+  parent: "art", models: [m], subtitle: m.subtitle }));
+const builtInIds = new Set([...REFERENCE_MODELS, ...SPATIAL_MODELS, ...SCAN_MODELS, ...DEMO_MODELS].map(m => m.id));
+const folders = new Map([...roots, ...ART_FOLDERS, ...SPATIAL_FOLDERS, ...scanFolders].map(f => [f.id, f]));
+export const ART_MODEL_COUNT = REFERENCE_MODELS.length + SPATIAL_MODELS.length + SCAN_MODELS.length;
 
 export const personalModels = (models) => models.filter(m => !builtInIds.has(m.id));
 
@@ -53,7 +57,7 @@ export function catalogView(path = "", models = []) {
       { id: path, name: folder.name },
     ],
     entries: path === "art"
-      ? [...ART_FOLDERS.map(f => ({ ...f, subtitle: `Поз: ${f.models.length} · исходная коллекция` })), spatialFolder]
+      ? [...ART_FOLDERS.map(f => ({ ...f, subtitle: `Поз: ${f.models.length} · исходная коллекция` })), ...SPATIAL_FOLDERS, ...scanFolders]
       : path === "arch" ? DEMO_MODELS : folder.models,
   };
 }

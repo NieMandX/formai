@@ -26,10 +26,19 @@ export class SplatXRProfile {
       renderer.xr.setFoveation(0.35);
     }
     if (this.spark !== (active ? spark : null)) {
-      if (this.spark) this.spark.maxStdDev = this.stdDev;
+      if (this.spark) {
+        this.spark.maxStdDev = this.stdDev;
+        this.spark.premultipliedAlpha = this.premultipliedAlpha;
+      }
       this.spark = active ? spark : null;
       if (this.spark) {
         this.stdDev = spark.maxStdDev;
+        this.premultipliedAlpha = spark.premultipliedAlpha;
+        // Avoid low-opacity RGB premultiplication before framebuffer blending.
+        // Spark's documented posterization workaround; this is the material
+        // blend mode, not the canvas/XR compositor alpha convention.
+        // https://github.com/sparkjsdev/spark/issues/36#issuecomment-3444040846
+        spark.premultipliedAlpha = false;
         // Spark's recommended VR footprint: less transparent overdraw,
         // with all splats and the same SH/color data still present.
         spark.maxStdDev = Math.sqrt(5);

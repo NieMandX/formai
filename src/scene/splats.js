@@ -3,7 +3,9 @@ import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import { createSplatProxy } from "./splat-proxy.js";
 
 export function createSplatRenderer(renderer) {
-  return new SparkRenderer({ renderer, enableLod: false, premultipliedAlpha: true,
+  // Keep float32 centers and fp16 colors through the camera-relative accumulator,
+  // rather than re-quantizing the extended source into the compact packed format.
+  return new SparkRenderer({ renderer, enableLod: false, accumExtSplats: true, premultipliedAlpha: true,
     depthTest: true, depthWrite: false, sortRadial: true });
 }
 

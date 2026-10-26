@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
+import { SPATIAL_MODELS } from "../spatial-catalog.js";
 import { REFERENCE_MODELS } from "../reference-catalog.js";
 import { catalogView, personalModels } from "../library-catalog.js";
 const marks = { knot: Layers3, architecture: Box, robot: PersonStanding };
@@ -145,7 +146,7 @@ export function Library({
       </button>}
       <div className="local-note">
         <FolderOpen size={19} />
-        <span>Поз в каталоге: {REFERENCE_MODELS.length}</span>
+        <span>Моделей в Art: {REFERENCE_MODELS.length + SPATIAL_MODELS.length}</span>
         <p>
           Вся коллекция доступна на Quest 3. Выбранная поза загружается с
           исходной детализацией и добавляется к моделям в комнате.

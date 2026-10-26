@@ -26,6 +26,8 @@ export function Inspector({ model, viewer, settings, setSettings }) {
           {model
             ? model.format === "DEMO"
               ? "Демонстрационная модель"
+              : model.splats
+                ? "Gaussian Splatting · исходное качество"
               : model.reference
                 ? referenceDetail(referenceById(model.id))
               : `${model.format} · локальная коллекция`
@@ -175,7 +177,7 @@ export function Inspector({ model, viewer, settings, setSettings }) {
       </fieldset>
       {model && (
         <p className="model-stats">
-          {model.triangles.toLocaleString("ru-RU")} треугольников
+          {(model.splats || model.triangles).toLocaleString("ru-RU")} {model.splats ? "сплатов" : "треугольников"}
           {model.triangles > 300000 ? " · тяжёлая модель для VR" : ""}
         </p>
       )}

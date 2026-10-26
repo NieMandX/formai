@@ -1,5 +1,6 @@
 import { RotateCcw, Play, Pause, Sparkles } from "lucide-react";
 import { referenceById, referenceDetail } from "../reference-catalog.js";
+import { SplatInspector } from "./SplatInspector.jsx";
 export function Toggle({ label, checked, onChange }) {
   return (
     <label className="toggle-row">
@@ -34,6 +35,7 @@ export function Inspector({ model, viewer, settings, setSettings }) {
             : "Добавьте модель в коллекцию"}
         </p>
       </div>
+      {model?.splats > 0 && <SplatInspector key={model.id} model={model} viewer={viewer} />}
       <fieldset disabled={!model}>
         <legend>Трансформация</legend>
         <label className="range-label" htmlFor="scale">

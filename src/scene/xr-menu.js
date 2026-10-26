@@ -104,6 +104,7 @@ export class SpatialMenu {
       clips: m.clips.map(({ name, duration }) => ({ name, duration })),
       bones: m.bones,
       triangles: m.triangles,
+      splats: m.splats,
       clip: m.clip,
       speed: m.speed,
       playing: m.playing,

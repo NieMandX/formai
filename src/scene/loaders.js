@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { extension, normalizedPath, validateModelURL } from "../model-utils.js";
+import { extension, normalizedPath, validateModelURL, MAX_SPATIAL_FILE_BYTES } from "../model-utils.js";
+import { gaussianPlyInfo } from "./splat-format.js";
 import { downloadModel } from "./download.js";
 import { hydrateSourceMaterials } from "./source-materials.js";
 
@@ -9,6 +10,7 @@ export function disposeObject(root) {
     geometries = new Set(),
     skeletons = new Set();
   root.traverse((o) => {
+    if (o.userData.gaussianSplat) o.dispose();
     if (o.geometry) geometries.add(o.geometry);
     if (o.skeleton) skeletons.add(o.skeleton);
     for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
@@ -106,6 +108,10 @@ async function parser(ext, data, path, manager, renderer, cleanups) {
       clips: result.scene.animations || result.animations || [],
     };
   }
+  if (ext === "ply") {
+    const info = gaussianPlyInfo(data);
+    if (info) return (await import("./splats.js")).loadGaussianPly(data, info);
+  }
   const geometry =
     ext === "stl"
       ? new (
@@ -187,12 +193,14 @@ export async function loadModel({ files, main, url, signal, onProgress, expected
       ext = extension(file.name);
     } else {
       const parsed = validateModelURL(url);
-      data = await downloadModel(parsed.href, { signal, onProgress, expectedBytes, maxBytes });
       ext = extension(parsed.pathname);
+      data = await downloadModel(parsed.href, { signal, onProgress, expectedBytes,
+        maxBytes: maxBytes ?? (ext === "ply" ? MAX_SPATIAL_FILE_BYTES : undefined) });
       path = new URL(".", parsed).href;
     }
     result = await parser(ext, data, path, manager, renderer, cleanups);
     if (loading) await settled;
+    signal?.throwIfAborted();
     if (failed.length)
       throw new Error(
         "Часть текстур или файлов модели недоступна. Проверьте комплект файлов и разрешение CORS сервера.",

@@ -9,6 +9,7 @@ import { refreshSkinnedBounds } from "./model-bounds.js";
 import { referenceById, referencePath } from "../reference-catalog.js";
 import { restoreReferenceEyeTransparency } from "./reference-materials.js";
 import { createMaterialControls, setMapGain, resetMapGains } from "./material-controls.js";
+import { spatialById, spatialPath } from "../spatial-catalog.js";
 import { ARWorkspace } from "./ar-workspace.js";
 
 export class Viewer {
@@ -167,15 +168,31 @@ export class Viewer {
     this.renderer.setPixelRatio(originalRatio);
     return results;
   }
-  async import(source, meta) {
+  async load(source) {
     const result = await loadModel(source, this.renderer);
+    try {
+      if (result.splats && !this.splatRenderer && !this.disposed) {
+        const { createSplatRenderer } = await import("./splats.js");
+        if (!this.disposed && !this.splatRenderer) {
+          this.splatRenderer = createSplatRenderer(this.renderer);
+          this.scene.add(this.splatRenderer);
+        }
+      }
+      return result;
+    } catch (error) {
+      disposeObject(result.root);
+      throw error;
+    }
+  }
+  async import(source, meta) {
+    const result = await this.load(source);
     if (this.disposed) {
       disposeObject(result.root);
       return;
     }
     return this.add(result, meta);
   }
-  add({ root, clips }, meta) {
+  add({ root, clips, splats = 0 }, meta) {
     if (this.models.size >= 12) {
       disposeObject(root);
       throw new Error(
@@ -265,6 +282,7 @@ export class Viewer {
     const model = {
       ...meta,
       slot,
+      splats,
       wrapper,
       root,
       clips,
@@ -293,7 +311,8 @@ export class Viewer {
       return;
     }
     if (this.ar?.drawing) throw new Error("Снимите фиксацию во вкладке «Рисование», чтобы добавить модель.");
-    const reference = referenceById(id);
+    const spatial = spatialById(id);
+    const reference = referenceById(id) || spatial;
     if (reference) {
       if (this.models.size >= 12)
         throw new Error("В комнате уже 12 моделей. Выгрузите одну через меню материалов (B).");
@@ -302,9 +321,9 @@ export class Viewer {
       this.emit();
       let result;
       try {
-        const address = new URL(referencePath(reference, import.meta.env.BASE_URL, import.meta.env.DEV), location.href);
+        const address = new URL(spatial ? spatialPath(spatial, import.meta.env.BASE_URL) : referencePath(reference, import.meta.env.BASE_URL, import.meta.env.DEV), location.href);
         address.searchParams.set("v", reference.sha256.slice(0, 16));
-        result = await loadModel({
+        result = await this.load({
           url: address.href,
           expectedBytes: reference.bytes,
           maxBytes: 250 * 1024 ** 2,
@@ -318,14 +337,14 @@ export class Viewer {
               this.emit();
             }
           },
-        }, this.renderer);
+        });
         if (this.disposed) {
           disposeObject(result.root);
           return;
         }
         // Each reference stays in its own room slot until explicitly unloaded.
         const loaded = this.add(result, {
-          id, name: reference.name, format: "GLB", reference: true,
+          id, name: reference.name, format: spatial ? spatial.format : "GLB", reference: !spatial,
         });
         this.focus();
         return loaded;
@@ -458,6 +477,11 @@ export class Viewer {
     this.scene.remove(m.wrapper);
     disposeObject(m.wrapper);
     this.models.delete(id);
+    if (m.splats && this.splatRenderer && ![...this.models.values()].some(model => model.splats)) {
+      this.scene.remove(this.splatRenderer);
+      this.splatRenderer.dispose();
+      this.splatRenderer = null;
+    }
     if (this.selected === m)
       this.selected = [...this.models.values()][0] || null;
     this.emit();
@@ -520,12 +544,13 @@ export class Viewer {
       thumbnails: this.thumbnails,
       catalogLoad: this.catalogLoad,
       models: [...this.models.values()].map(
-        ({ id, name, format, clips, triangles, bones, reference }) => ({
+        ({ id, name, format, clips, triangles, bones, reference, splats }) => ({
           id,
           name,
           format,
           animations: clips.length,
           triangles,
+          splats,
           bones,
           reference: !!reference,
         }),
@@ -547,6 +572,7 @@ export class Viewer {
             playing: m.playing,
             speed: m.speed,
             triangles: m.triangles,
+            splats: m.splats,
             bones: m.bones,
             originalSize: m.originalSize,
           }
@@ -569,6 +595,11 @@ export class Viewer {
     );
     this.renderer.domElement.removeEventListener("pointerup", this.pointerUp);
     for (const id of [...this.models.keys()]) this.remove(id);
+    if (this.splatRenderer) {
+      this.scene.remove(this.splatRenderer);
+      this.splatRenderer.dispose();
+      this.splatRenderer = null;
+    }
     disposeObject(this.scene);
     this.gallery.environment.dispose();
     this.renderer.dispose();

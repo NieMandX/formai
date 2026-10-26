@@ -1,4 +1,5 @@
 // Pixel-space layout shared by the spatial renderer and interaction tests.
+import { SPATIAL_MODELS } from "../spatial-catalog.js";
 import { REFERENCE_MODELS } from "../reference-catalog.js";
 import { catalogView, personalModels } from "../library-catalog.js";
 export const MENU = {
@@ -86,9 +87,9 @@ export function buildMenuLayout(state) {
   label(title, 316, 82, 42, { weight: 650 });
   label(
     state.tab === "drawing" ? (state.drawing ? "Поза зафиксирована · можно рисовать" : "Разместите модели, затем зафиксируйте сцену") : state.tab === "collection"
-      ? `${REFERENCE_MODELS.length} поз · ${state.models.length} из 12 моделей в комнате`
+      ? `${REFERENCE_MODELS.length + SPATIAL_MODELS.length} моделей · ${state.models.length} из 12 моделей в комнате`
       : state.tab === "object" && model
-        ? `${model.name} · ${(model.triangles || 0).toLocaleString("ru-RU")} треугольников`
+        ? `${model.name} · ${(model.splats || model.triangles || 0).toLocaleString("ru-RU")} ${model.splats ? "сплатов" : "треугольников"}`
         : model?.name || "Выберите модель в коллекции",
     318,
     132,

@@ -33,8 +33,8 @@ export function buildMaterialMenuLayout(state) {
       modelId: model.id, target: state.materialTarget, disabled: state.busy, reference: 1 });
   });
   if (!state.maps.length) {
-    label("В этом материале нет карт", 48, 402, 36);
-    label("Он использует цвет и параметры материала.", 48, 464, 28, { muted: true });
+    label(model.splats ? "Gaussian Splatting · исходный вид" : "В этом материале нет карт", 48, 402, 36);
+    label(model.splats ? "Цвет и свет записаны в сплатах. PBR-карт нет." : "Он использует цвет и параметры материала.", 48, 464, 28, { muted: true });
   }
   button("maps:prev", "Назад", 48, 834, 260, 80,
     { icon: "left", disabled: state.busy || page === 0, targetPage: page - 1 });

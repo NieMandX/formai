@@ -16,15 +16,17 @@ test("XR splats avoid shadow passes and excessive foveation, restoring desktop o
     getFoveation: () => foveation, setFoveation: value => { foveation = value; },
   } };
   const profile = new SplatXRProfile(renderer);
-  const spark = { maxStdDev: Math.sqrt(8), enableLod: false };
+  const spark = { maxStdDev: Math.sqrt(8), enableLod: false, premultipliedAlpha: true };
   profile.update(spark, false);
   assert.equal(renderer.shadowMap.enabled, true); assert.equal(foveation, 1);
   profile.update(spark, true); profile.update(spark, true);
   assert.equal(renderer.shadowMap.enabled, false); assert.equal(foveation, .35);
   assert.equal(spark.maxStdDev, Math.sqrt(5)); assert.equal(spark.enableLod, false);
+  assert.equal(spark.premultipliedAlpha, false);
   profile.update(spark, false);
   assert.equal(renderer.shadowMap.enabled, true); assert.equal(renderer.shadowMap.needsUpdate, true);
   assert.equal(spark.maxStdDev, Math.sqrt(8)); assert.equal(foveation, 1);
+  assert.equal(spark.premultipliedAlpha, true);
 });
 
 test("loading and unloading mid-session restores the prior profile and supports replacement renderers", () => {
@@ -32,11 +34,13 @@ test("loading and unloading mid-session restores the prior profile and supports 
   const renderer = { shadowMap: { enabled: false }, xr: {
     getFoveation: () => foveation, setFoveation: value => { foveation = value; },
   } };
-  const profile = new SplatXRProfile(renderer), a = { maxStdDev: 2.8 }, b = { maxStdDev: 3 };
+  const profile = new SplatXRProfile(renderer), a = { maxStdDev: 2.8, premultipliedAlpha: true }, b = { maxStdDev: 3, premultipliedAlpha: false };
   profile.update(null, true); assert.equal(foveation, .5);
   profile.update(a, true); profile.update(b, true);
   assert.equal(a.maxStdDev, 2.8); assert.equal(b.maxStdDev, Math.sqrt(5));
+  assert.equal(a.premultipliedAlpha, true); assert.equal(b.premultipliedAlpha, false);
   profile.update(null, true);
   assert.equal(b.maxStdDev, 3); assert.equal(renderer.shadowMap.enabled, false); assert.equal(foveation, .5);
+  assert.equal(b.premultipliedAlpha, false);
   profile.update(a, true); assert.equal(a.maxStdDev, Math.sqrt(5));
 });

@@ -10,6 +10,7 @@ import { referenceById, referencePath } from "../reference-catalog.js";
 import { restoreReferenceEyeTransparency } from "./reference-materials.js";
 import { createMaterialControls, setMapGain, resetMapGains } from "./material-controls.js";
 import { spatialById, spatialPath } from "../spatial-catalog.js";
+import { scanById, selectScanAsset, scanPath } from "../scan-catalog.js";
 import { ARWorkspace } from "./ar-workspace.js";
 import { rendererAntialias, SplatXRProfile } from "./splat-xr-profile.js";
 import { SplatSettings } from "./splat-settings.js";
@@ -322,7 +323,8 @@ export class Viewer {
     }
     if (this.ar?.drawing) throw new Error("Снимите фиксацию во вкладке «Рисование», чтобы добавить модель.");
     const spatial = spatialById(id);
-    const reference = referenceById(id) || spatial;
+    const scan = scanById(id);
+    const reference = referenceById(id) || spatial || (scan && selectScanAsset(scan, this.renderer.capabilities.maxTextureSize));
     if (reference) {
       if (this.models.size >= 12)
         throw new Error("В комнате уже 12 моделей. Выгрузите одну через меню материалов (B).");
@@ -331,7 +333,9 @@ export class Viewer {
       this.emit();
       let result;
       try {
-        const address = new URL(spatial ? spatialPath(spatial, import.meta.env.BASE_URL) : referencePath(reference, import.meta.env.BASE_URL, import.meta.env.DEV), location.href);
+        const address = new URL(spatial ? spatialPath(spatial, import.meta.env.BASE_URL)
+          : scan ? scanPath(reference, import.meta.env.BASE_URL, import.meta.env.DEV)
+          : referencePath(reference, import.meta.env.BASE_URL, import.meta.env.DEV), location.href);
         address.searchParams.set("v", reference.sha256.slice(0, 16));
         result = await this.load({
           url: address.href,
@@ -354,7 +358,8 @@ export class Viewer {
         }
         // Each reference stays in its own room slot until explicitly unloaded.
         const loaded = this.add(result, {
-          id, name: reference.name, format: spatial ? spatial.format : "GLB", reference: !spatial,
+          id, name: reference.name, format: spatial ? spatial.format : "GLB", reference: !spatial && !scan,
+          scan: !!scan, textureSize: scan ? reference.textureSize : undefined,
         });
         this.focus();
         return loaded;
@@ -590,6 +595,8 @@ export class Viewer {
             name: m.name,
             format: m.format,
             reference: !!m.reference,
+            scan: !!m.scan,
+            textureSize: m.textureSize,
             scale: m.wrapper.scale.x,
             position: m.wrapper.position.toArray(),
             rotation: (m.wrapper.rotation.y * 180) / Math.PI,

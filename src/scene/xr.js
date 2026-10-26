@@ -105,7 +105,7 @@ export function installXR(viewer) {
   const menu = new SpatialMenu(viewer, {
     recenter: () => {
       cancelGrab();
-      menu.open(head());
+      menu.open(head(), menu.mode, false);
     },
     home,
     inspect,
@@ -345,7 +345,7 @@ export function installXR(viewer) {
       if (needsPlacement && --needsPlacement === 0) {
         viewer.ar.initialize();
         menu.tab = viewer.ar.active ? "drawing" : "collection";
-        menu.open(head(), "main");
+        menu.open(head(), viewer.selected?.splats ? "materials" : "main");
       }
       if (!focused) return;
       if ([...grips].some((c) => !c.grip.visible)) cancelGrab();
@@ -402,7 +402,7 @@ export function installXR(viewer) {
         if (buttonEdge(c.recenterButton, recenterButton)) {
           cancelInteractions();
           if (input.handedness === "right") menu.toggle(head(), "materials");
-          else menu.open(head());
+          else menu.open(head(), menu.mode, false);
           pulse(c);
         }
         c.menuButton = menuButton;

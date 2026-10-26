@@ -9,6 +9,7 @@ import {
 import { buildMaterialMenuLayout } from "./xr-material-menu.js";
 import { catalogView } from "../library-catalog.js";
 import { materialControlState } from "./material-controls.js";
+import { placeSplatPanel } from "./xr-splat-menu.js";
 
 const C = {
   paper: "#f5f4ef",
@@ -32,6 +33,9 @@ export class SpatialMenu {
     this.materialTarget = "all";
     this.materialPage = 0;
     this.materialModelId = null;
+    this.splatPage = 0;
+    this.splatHint = "";
+    this.splatAnchor = null;
     this.page = 0;
     this.collectionPath = "";
     this.clipPage = 0;
@@ -119,8 +123,11 @@ export class SpatialMenu {
       this.materialModelId = this.viewer.selected?.id || null;
       this.materialTarget = "all";
       this.materialPage = 0;
+      this.splatPage = 0;
+      this.splatHint = "";
       this.pressed.clear();
       this.hover.clear();
+      if (this.visible && this.mode === "materials") this.place(this.viewer.camera);
     }
     return {
       mode: this.mode,
@@ -137,6 +144,7 @@ export class SpatialMenu {
       model: this.modelState(),
       ...(this.mode === "materials" ? {
         materialTarget: this.materialTarget, materialPage: this.materialPage,
+        splatPage: this.splatPage, splatHint: this.splatHint, splatSettings: this.viewer.getSplatSettings?.(),
         ...materialControlState(this.viewer.selected?.materialControls, this.materialTarget),
       } : {}),
       models: [...this.viewer.models.values()].map((m) => ({
@@ -157,7 +165,14 @@ export class SpatialMenu {
     }
     if (this.dirty) this.draw();
   }
-  place(camera) {
+  place(camera, nearModel = true) {
+    this.splatAnchor = null;
+    const model = this.viewer.selected;
+    if (nearModel && this.mode === "materials" && model?.splats &&
+        placeSplatPanel(this.group, model, camera, MENU.worldWidth * .78)) {
+      this.splatAnchor = { id: model.id, matrix: model.wrapper.matrixWorld.clone() };
+      return;
+    }
     const head = camera.getWorldPosition(new T.Vector3());
     const forward = new T.Vector3(0, 0, -1).applyQuaternion(
       camera.getWorldQuaternion(new T.Quaternion()),
@@ -173,18 +188,19 @@ export class SpatialMenu {
     this.group.rotation.set(0, Math.atan2(-forward.x, -forward.z), 0);
     this.group.updateMatrixWorld(true);
   }
-  open(camera, mode = this.mode) {
+  open(camera, mode = this.mode, nearModel = true) {
     this.mode = mode;
     this.surface.scale.setScalar(mode === "materials" ? 0.78 : 1);
     this.hover.clear();
     this.pressed.clear();
     this.confirm = null;
     this.group.visible = true;
-    this.place(camera);
     this.sync();
+    this.place(camera, nearModel);
   }
   close() {
     this.group.visible = false;
+    this.splatAnchor = null;
     this.confirm = null;
     this.hover.clear();
     this.pressed.clear();
@@ -267,6 +283,10 @@ export class SpatialMenu {
     if (c.id === "time") v.seek(value);
     if (c.id === "exposure") v.setSceneSetting("exposure", value);
     if (c.id.startsWith("map:")) v.setMapGain(c.target, c.id.slice(4), value, c.modelId);
+    if (c.id.startsWith("splat:value:")) {
+      v.setSplatSetting(c.key, value, c.modelId);
+      this.splatHint = c.help;
+    }
     this.sync();
   }
   toast(text) {
@@ -282,6 +302,17 @@ export class SpatialMenu {
       // Room-only action: keep imported files in IndexedDB and catalogue entries.
       v.remove(v.selected.id);
       this.close();
+    } else if (id.startsWith("splat:page:")) {
+      this.splatPage = clamp(+id.slice(11), 0, 3);
+      this.splatHint = "";
+      this.pressed.clear();
+      this.hover.clear();
+    } else if (id.startsWith("splat:toggle:")) {
+      const key = id.slice(13), state = v.getSplatSettings();
+      if (state) v.setSplatSetting(key, !state.values[key], modelId);
+    } else if (id === "splat:reset") {
+      v.resetSplatSettings(modelId);
+      this.splatHint = "Исходные настройки восстановлены";
     } else if (id === "material:prev" || id === "material:next") {
       if (v.catalogLoad) return;
       const entries = ["all", ...(v.selected?.materialControls || []).map(m => m.id)];
@@ -377,6 +408,11 @@ export class SpatialMenu {
   }
   update(dt) {
     this.elapsed += dt;
+    if (this.visible && this.splatAnchor) {
+      const model = this.viewer.selected;
+      model?.wrapper.updateWorldMatrix(true, false);
+      if (model?.id === this.splatAnchor.id && !model.wrapper.matrixWorld.equals(this.splatAnchor.matrix)) this.place(this.viewer.camera);
+    }
     if (this.notice && this.elapsed > this.noticeUntil) {
       this.notice = "";
       this.dirty = true;

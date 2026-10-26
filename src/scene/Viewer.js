@@ -12,12 +12,16 @@ import { createMaterialControls, setMapGain, resetMapGains } from "./material-co
 import { spatialById, spatialPath } from "../spatial-catalog.js";
 import { ARWorkspace } from "./ar-workspace.js";
 import { rendererAntialias, SplatXRProfile } from "./splat-xr-profile.js";
+import { SplatSettings } from "./splat-settings.js";
 
 export class Viewer {
   constructor(element, onChange) {
     this.element = element;
     this.onChange = onChange;
     this.models = new Map();
+    let preferenceStorage;
+    try { preferenceStorage = window.localStorage; } catch { /* Session-only settings. */ }
+    this.splatSettings = new SplatSettings(preferenceStorage);
     this.selected = null;
     this.disposed = false;
     this.catalogLoad = null;
@@ -120,6 +124,7 @@ export class Viewer {
       this.updateModels(dt, time);
       this.xr.update(dt);
       this.splatXRProfile.update(this.splatRenderer, this.renderer.xr.isPresenting);
+      this.splatSettings.apply(this.splatRenderer, this.renderer.xr, this.renderer.xr.isPresenting);
       if (!this.renderer.xr.isPresenting) this.orbit.update();
       this.renderer.render(this.scene, this.camera);
     });
@@ -300,10 +305,12 @@ export class Viewer {
       materialControls: createMaterialControls(root),
     };
     this.models.set(meta.id, model);
+    if (splats) this.splatSettings?.attach(model);
     if (bones) refreshSkinnedBounds(wrapper);
     if (clips.length) model.action = model.mixer.clipAction(clips[0]).play();
     this.ar?.add(model);
     this.select(meta.id);
+    if (splats && this.renderer.xr.isPresenting) this.xr?.menu?.open(this.camera, "materials");
     return model;
   }
   async ensureModel(id) {
@@ -398,6 +405,25 @@ export class Viewer {
   resetMapGains(target = "all") {
     if (this.selected && !this.catalogLoad)
       resetMapGains(this.selected.materialControls, target);
+  }
+  getSplatSettings() {
+    return this.splatSettings?.state(this.selected, this.renderer.xr.isPresenting) || null;
+  }
+  setSplatSetting(key, value, modelId = this.selected?.id) {
+    if (!this.selected || this.selected.id !== modelId || this.catalogLoad) return;
+    if (this.splatSettings.set(this.selected, key, value, this.renderer.xr.isPresenting)) {
+      this.splatSettings.apply(this.splatRenderer, this.renderer.xr, this.renderer.xr.isPresenting);
+      this.emit();
+    }
+  }
+  resetSplatSettings(modelId = this.selected?.id) {
+    if (!this.selected || this.selected.id !== modelId || this.catalogLoad) return;
+    this.splatSettings.reset(this.selected, this.renderer.xr.isPresenting);
+    this.splatSettings.apply(this.splatRenderer, this.renderer.xr, this.renderer.xr.isPresenting);
+    this.emit();
+  }
+  splatSettingsReport() {
+    return this.splatSettings.report(this.selected, this.renderer.xr.isPresenting);
   }
   setPosition(axis, value) {
     if (!this.selected || this.ar?.drawing || !Number.isFinite(value)) return;
@@ -576,6 +602,7 @@ export class Viewer {
             speed: m.speed,
             triangles: m.triangles,
             splats: m.splats,
+            splatSettings: this.getSplatSettings(),
             bones: m.bones,
             originalSize: m.originalSize,
           }

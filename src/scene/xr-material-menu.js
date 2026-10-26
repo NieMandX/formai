@@ -1,7 +1,9 @@
 import { clamp } from "./xr-menu-model.js";
+import { buildSplatMenuLayout } from "./xr-splat-menu.js";
 
 // Same ray/trigger interaction as the main panel, without global scene controls.
 export function buildMaterialMenuLayout(state) {
+  if (state.model?.splats && state.splatSettings) return buildSplatMenuLayout(state);
   const controls = [], labels = [], model = state.model;
   const button = (id, text, x, y, w, h, extra = {}) =>
     controls.push({ id, text, x, y, w, h, type: "button", ...extra });

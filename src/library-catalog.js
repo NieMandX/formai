@@ -1,3 +1,4 @@
+import { SPATIAL_MODELS } from "./spatial-catalog.js";
 import { REFERENCE_MODELS, referenceDetail } from "./reference-catalog.js";
 
 export const DEMO_MODELS = [
@@ -19,12 +20,17 @@ export const ART_FOLDERS = [
     .map(m => ({ ...m, reference: true, subtitle: referenceDetail(m) })),
 }));
 
+const spatialFolder = {
+  id: "art/spatial", name: "vrgirlz ariel cream outfit 024 spatial model",
+  folder: true, parent: "art", models: SPATIAL_MODELS,
+  subtitle: "Spatial · Gaussian Splatting · 1 модель",
+};
 const roots = [
-  { id: "art", name: "Art", folder: true, parent: "", subtitle: `${REFERENCE_MODELS.length} модели · ${ART_FOLDERS.length} папок` },
+  { id: "art", name: "Art", folder: true, parent: "", subtitle: `${REFERENCE_MODELS.length + SPATIAL_MODELS.length} модели · ${ART_FOLDERS.length + 1} папок` },
   { id: "arch", name: "Arch", folder: true, parent: "", subtitle: "Робот, архитектура и узел · 3 модели" },
 ];
-const builtInIds = new Set([...REFERENCE_MODELS, ...DEMO_MODELS].map(m => m.id));
-const folders = new Map([...roots, ...ART_FOLDERS].map(f => [f.id, f]));
+const builtInIds = new Set([...REFERENCE_MODELS, ...SPATIAL_MODELS, ...DEMO_MODELS].map(m => m.id));
+const folders = new Map([...roots, ...ART_FOLDERS, spatialFolder].map(f => [f.id, f]));
 
 export const personalModels = (models) => models.filter(m => !builtInIds.has(m.id));
 
@@ -47,7 +53,7 @@ export function catalogView(path = "", models = []) {
       { id: path, name: folder.name },
     ],
     entries: path === "art"
-      ? ART_FOLDERS.map(f => ({ ...f, subtitle: `Поз: ${f.models.length} · исходная коллекция` }))
+      ? [...ART_FOLDERS.map(f => ({ ...f, subtitle: `Поз: ${f.models.length} · исходная коллекция` })), spatialFolder]
       : path === "arch" ? DEMO_MODELS : folder.models,
   };
 }

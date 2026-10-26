@@ -8,6 +8,7 @@ export const MODEL_EXTENSIONS = [
   "dae",
 ];
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
+export const MAX_SPATIAL_FILE_BYTES = 250 * 1024 * 1024;
 export const MAX_BUNDLE_BYTES = 250 * 1024 * 1024;
 export function extension(name) {
   return name.split(/[?#]/)[0].split(".").pop().toLowerCase();
@@ -23,9 +24,9 @@ export function normalizedPath(path) {
 }
 export function validateFiles(files) {
   if (!files.length) throw new Error("Выберите файлы модели.");
-  if (files.some((f) => f.size > MAX_FILE_BYTES))
+  if (files.some((f) => f.size > (extension(f.name) === "ply" ? MAX_SPATIAL_FILE_BYTES : MAX_FILE_BYTES)))
     throw new Error(
-      "Один файл не должен превышать 100 МБ. Для Quest лучше оптимизировать модель.",
+      "Лимит файла: 100 МБ, для PLY — 250 МБ.",
     );
   if (files.reduce((sum, f) => sum + f.size, 0) > MAX_BUNDLE_BYTES)
     throw new Error("Общий размер файлов превышает 250 МБ.");

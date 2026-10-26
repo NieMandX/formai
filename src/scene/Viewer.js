@@ -11,6 +11,7 @@ import { restoreReferenceEyeTransparency } from "./reference-materials.js";
 import { createMaterialControls, setMapGain, resetMapGains } from "./material-controls.js";
 import { spatialById, spatialPath } from "../spatial-catalog.js";
 import { ARWorkspace } from "./ar-workspace.js";
+import { rendererAntialias, SplatXRProfile } from "./splat-xr-profile.js";
 
 export class Viewer {
   constructor(element, onChange) {
@@ -38,7 +39,7 @@ export class Viewer {
     this.rig.add(this.camera);
     this.scene.add(this.rig);
     this.renderer = new T.WebGLRenderer({
-      antialias: true,
+      antialias: rendererAntialias(navigator.userAgent, import.meta.env.DEV && !!window.__questDevice),
       alpha: true,
       powerPreference: "high-performance",
     });
@@ -51,6 +52,7 @@ export class Viewer {
     this.renderer.xr.enabled = true;
     this.renderer.xr.setReferenceSpaceType("local-floor");
     this.renderer.xr.setFramebufferScaleFactor(1);
+    this.splatXRProfile = new SplatXRProfile(this.renderer);
     element.appendChild(this.renderer.domElement);
     this.renderer.domElement.setAttribute(
       "aria-label",
@@ -117,6 +119,7 @@ export class Viewer {
       last = time;
       this.updateModels(dt, time);
       this.xr.update(dt);
+      this.splatXRProfile.update(this.splatRenderer, this.renderer.xr.isPresenting);
       if (!this.renderer.xr.isPresenting) this.orbit.update();
       this.renderer.render(this.scene, this.camera);
     });
@@ -586,6 +589,7 @@ export class Viewer {
     this.disposed = true;
     this.catalogAbort?.abort();
     this.renderer.setAnimationLoop(null);
+    this.splatXRProfile.update(null, false);
     this.observer.disconnect();
     this.orbit.dispose();
     this.xr.dispose();

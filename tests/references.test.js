@@ -5,6 +5,7 @@ import { REFERENCE_MODELS, referenceDetail } from "../src/reference-catalog.js";
 import { ART_FOLDERS } from "../src/library-catalog.js";
 import { buildMenuLayout } from "../src/scene/xr-menu-model.js";
 import { downloadModel } from "../src/scene/download.js";
+import { MAX_CATALOG_FILE_BYTES } from "../src/model-utils.js";
 
 test("all source poses remain available while individual PBR assets are upgraded", () => {
   const state = { tab: "collection", models: [], model: null, settings: {}, page: 0 };
@@ -86,6 +87,19 @@ test("slow downloads continue while chunks arrive and release their idle timer",
   assert.deepEqual([...new Uint8Array(data)], [1, 2, 3, 4, 5, 6]);
   t.mock.timers.tick(180000);
   assert.equal(connectionSignal.aborted, false);
+});
+
+test("large catalog scans accept their declared size while ordinary imports retain their limits", async (t) => {
+  // Headers exercise the >250 MiB boundary without allocating a huge test asset.
+  const bytes = 300 * 1024 ** 2;
+  t.mock.method(globalThis, "fetch", async () => new Response(new Uint8Array([1, 2]), {
+    headers: { "content-length": String(bytes) },
+  }));
+  const url = "https://example.test/scan.glb";
+  await assert.rejects(downloadModel(url), /100 МБ/);
+  await assert.rejects(downloadModel(url, { maxBytes: 250 * 1024 ** 2 }), /250 МБ/);
+  await assert.rejects(downloadModel(url, { maxBytes: MAX_CATALOG_FILE_BYTES, expectedBytes: bytes }), /не полностью/);
+  await assert.rejects(downloadModel(url, { maxBytes: MAX_CATALOG_FILE_BYTES + 1 }), /Некорректный лимит/);
 });
 
 test("a stalled download aborts with a useful message and no completion progress", async (t) => {

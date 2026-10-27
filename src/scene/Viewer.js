@@ -4,7 +4,7 @@ import { createGallery } from "./gallery.js";
 import { makeDemo } from "./demos.js";
 import { disposeObject, loadModel } from "./loaders.js";
 import { installXR } from "./xr.js";
-import { clampScale } from "../model-utils.js";
+import { clampScale, MAX_CATALOG_FILE_BYTES } from "../model-utils.js";
 import { refreshSkinnedBounds } from "./model-bounds.js";
 import { referenceById, referencePath } from "../reference-catalog.js";
 import { restoreReferenceEyeTransparency } from "./reference-materials.js";
@@ -340,7 +340,7 @@ export class Viewer {
         result = await this.load({
           url: address.href,
           expectedBytes: reference.bytes,
-          maxBytes: 250 * 1024 ** 2,
+          maxBytes: scan ? MAX_CATALOG_FILE_BYTES : 250 * 1024 ** 2,
           signal: this.catalogAbort.signal,
           onProgress: (fraction) => {
             const text = fraction === 1

@@ -1,7 +1,9 @@
+import { MAX_CATALOG_FILE_BYTES } from "../model-utils.js";
+
 const MAX_BYTES = 100 * 1024 * 1024;
 
 export async function downloadModel(url, { signal, onProgress, expectedBytes, maxBytes = MAX_BYTES } = {}) {
-  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > 250 * 1024 ** 2)
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > MAX_CATALOG_FILE_BYTES)
     throw new Error("Некорректный лимит загрузки.");
   const tooLarge = () => new Error(`Файл превышает ${Math.round(maxBytes / 1024 ** 2)} МБ.`);
   const idle = new AbortController();

@@ -9,6 +9,9 @@ export const MODEL_EXTENSIONS = [
 ];
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
 export const MAX_SPATIAL_FILE_BYTES = 250 * 1024 * 1024;
+// Verified catalogue scans can include a 16K texture plus full mip levels.
+// User imports keep the separate 100 MiB / 250 MiB limits above and below.
+export const MAX_CATALOG_FILE_BYTES = 512 * 1024 * 1024;
 export const MAX_BUNDLE_BYTES = 250 * 1024 * 1024;
 export function extension(name) {
   return name.split(/[?#]/)[0].split(".").pop().toLowerCase();
